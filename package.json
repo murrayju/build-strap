@@ -78,6 +78,7 @@
   "scripts": {
     "build": "babel-node tools/run build",
     "publish": "babel-node tools/run publish",
+    "test": "babel-node tools/run publish",
     "run": "babel-node tools/run"
   }
 }
