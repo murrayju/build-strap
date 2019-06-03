@@ -3,11 +3,3 @@ install:
   - git symbolic-ref --short HEAD || git checkout ${TRAVIS_BRANCH}
 script:
 - ./bs publish --publish --buildNum=${TRAVIS_BUILD_NUMBER}
-deploy:
-  provider: npm
-  email: justin@murrayju.com
-  api_key:
-    secure: MTYeakub1RZ4n2lCjcNMgV0L++FbsLPjZ+yZAJjxV8Lpgx5hVZIE4jdBAJUs+oe1QFqClBWlLyBXg9x8H2fyPRjcUsFdm5YamLQhNPRsS0QVzJSvsodua1VSk4IyWR5pxdfFrz5YPmfioyXFw+U418afU6KMdmySfW+l6UdkLLzFNUicThkzuL28RKhGTmdx2tJ4juOWTpOfL5c4hylBaStH5+lPvbwIbe19uYwbVjZHP7IYicOuHi3PE/5Hk0nYr01MJKFW6PDng2CemEIF828FFJpWY+DcTTkf7xSfJqKiFRAXgpxmSjg/KLDcvBbmuk/QQ3AgEyEjv6DVt0uqHwBJDarKB0CCGIX3iWwTm7XKjd+8+MNdHmc4H6t5e7ygszrlHaTnY2vrja/6pubAtbGQzcSxT4f2kdQrt6UhjhjeE9/KiXWvaIp0y7AOcSahy6TR7y5TJRQDwpdbiSM/HvcjNwDhNfK50UlhmDyGGskN58RNx6ZY1qMg4tsXIoEyihaNa7GNMRR0QP/mbX1SjEfidBZ5sbmmaAxt/Vs1UBHTaxEH0MnqTv7is7Mz3J0BmcoiAwKFd9hJLocVA6nvKUj2PRouhnOvp7EtpTsYbg3a7o8tHR5V6xXhDZIr2ZFuNlGPnMZSnRQj/eZMuyd0gFcEU37Y/6O3WvIDomr6zl8=
-  on:
-    tags: true
-    repo: murrayju/build-strap

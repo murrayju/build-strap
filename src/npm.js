@@ -56,11 +56,13 @@ export async function npmPublish(
   publishPath: string, // distDir, or package.tgz file
   npmConfig?: NpmConfig,
   npmCreds?: NpmCreds,
+  npmToken?: string,
   tag?: string,
   skipExisting: boolean = false,
   npmPath?: string, // path to executable
 ) {
   const creds = npmCreds || envNpmCreds;
+  const authToken = npmToken || process.env.NPM_TOKEN;
   const name = getPkgName();
   const { publish, registry, access, 'dry-run': dryRun } =
     npmConfig || getNpmConfig();
@@ -74,12 +76,17 @@ export async function npmPublish(
   const workDir = (await fs.stat(resolvedPath)).isDirectory()
     ? resolvedPath
     : path.dirname(resolvedPath);
-  if (creds || registry) {
+  if (creds || registry || authToken) {
     // Write out .npmrc with credentials
     await fs.mkdirp(workDir);
     await fs.writeFile(
       path.join(workDir, '.npmrc'),
       `${registry ? `registry=${registry}` : ''}
+${
+  authToken
+    ? `//${registry || 'registry.npmjs.org'}/:_authToken=${authToken}`
+    : ''
+}
 ${
   creds
     ? `_auth=${Buffer.from(`${creds.username}:${creds.password}`).toString(
