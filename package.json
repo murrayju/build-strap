@@ -31,13 +31,13 @@
     "fs-extra": "8",
     "glob": "7",
     "is-reachable": "3",
-    "moment": "2",
+    "moment": "^2.24.0",
     "request": "2",
     "request-promise-native": "1",
     "rimraf": "2",
     "source-map-support": "*",
     "stream-counter": "1",
-    "tar": "4"
+    "tar": "^4.4.9"
   },
   "devDependencies": {
     "@babel/cli": "7",
