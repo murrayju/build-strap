@@ -25,6 +25,7 @@ export async function publish(
   npmSkipExisting?: boolean = false, // (optional) if true, don't error when artifact already exists (skip publish)
   npmConfig?: NpmConfig, // (optional) Npm config info (normally in package.json)
   npmCreds?: NpmCreds, // (optional) Npm credentials (normally from ENV var)
+  npmAuthToken?: string, // (optional) Npm auth token (normally from ENV var)
 ) {
   if (typeof prePublishFn === 'function') {
     await run(async () => {
@@ -61,6 +62,7 @@ export async function publish(
       tgzFilePath,
       npmConfig,
       npmCreds,
+      npmAuthToken,
       npmTag,
       npmSkipExisting,
       npmPath,

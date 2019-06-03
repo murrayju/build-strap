@@ -56,13 +56,13 @@ export async function npmPublish(
   publishPath: string, // distDir, or package.tgz file
   npmConfig?: NpmConfig,
   npmCreds?: NpmCreds,
-  npmToken?: string,
+  npmAuthToken?: string,
   tag?: string,
   skipExisting: boolean = false,
   npmPath?: string, // path to executable
 ) {
   const creds = npmCreds || envNpmCreds;
-  const authToken = npmToken || process.env.NPM_TOKEN;
+  const authToken = npmAuthToken || process.env.NPM_TOKEN;
   const name = getPkgName();
   const { publish, registry, access, 'dry-run': dryRun } =
     npmConfig || getNpmConfig();
