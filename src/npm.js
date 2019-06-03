@@ -78,15 +78,13 @@ export async function npmPublish(
     : path.dirname(resolvedPath);
   if (creds || registry || authToken) {
     // Write out .npmrc with credentials
+    const theRegistry = registry || 'https://registry.npmjs.org/';
+    const [, host] = /^(?:http(?:s)?:\/\/)?(.+)$/.exec(theRegistry) || [];
     await fs.mkdirp(workDir);
     await fs.writeFile(
       path.join(workDir, '.npmrc'),
-      `${registry ? `registry=${registry}` : ''}
-${
-  authToken
-    ? `//${registry || 'registry.npmjs.org'}/:_authToken=${authToken}`
-    : ''
-}
+      `registry=${theRegistry}
+${authToken ? `//${host}:_authToken=${authToken}` : ''}
 ${
   creds
     ? `_auth=${Buffer.from(`${creds.username}:${creds.password}`).toString(
