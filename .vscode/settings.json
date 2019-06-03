@@ -1,0 +1,23 @@
+// Place your settings in this file to overwrite default and user settings.
+{
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/bower_components": true,
+    "dist/": true,
+    "out/": true,
+    "download/": true
+  },
+  "javascript.validate.enable": false,
+  "[javascript]": {
+    "editor.formatOnSave": true
+  },
+  "eslint.packageManager": "yarn",
+  "cSpell.words": [
+    "artifactory",
+    "creds",
+    "flowtype",
+    "linebreak",
+    "repo"
+  ],
+  "prettier.eslintIntegration": true
+}

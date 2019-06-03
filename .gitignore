@@ -1,0 +1,10 @@
+syntax: glob
+dist/
+download/
+node_modules/
+out/
+npm-debug.log
+*.generated.*
+*.orig
+*.log
+latest.build.*

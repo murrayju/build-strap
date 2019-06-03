@@ -1,0 +1,83 @@
+{
+  "name": "build-strap",
+  "version": "1.0.0",
+  "description": "Node scripts for building things",
+  "private": true,
+  "license": "MIT",
+  "authors": [
+    "Justin Murray <justin@murrayju.com>"
+  ],
+  "repository": "https://github.com/murrayju/build-strap",
+  "main": "dist/build-tools-node.js",
+  "engines": {
+    "node": ">=7",
+    "npm": ">=4"
+  },
+  "buildStrap": {
+    "repoType": "git",
+    "copyright": "Justin Murray",
+    "releaseBranch": "master",
+    "devBranch": "dev",
+    "npm": {
+      "publish": true
+    },
+    "docker": {
+      "repository": "murrayju"
+    }
+  },
+  "dependencies": {
+    "bytes": "3",
+    "chokidar": "3",
+    "fs-extra": "8",
+    "glob": "7",
+    "is-reachable": "3",
+    "moment": "2",
+    "request": "2",
+    "request-promise-native": "1",
+    "rimraf": "2",
+    "source-map-support": "*",
+    "stream-counter": "1",
+    "tar": "4"
+  },
+  "devDependencies": {
+    "@babel/cli": "7",
+    "@babel/core": "7",
+    "@babel/node": "7",
+    "@babel/plugin-proposal-class-properties": "7",
+    "@babel/plugin-proposal-decorators": "7",
+    "@babel/plugin-proposal-do-expressions": "7",
+    "@babel/plugin-proposal-export-default-from": "7",
+    "@babel/plugin-proposal-export-namespace-from": "7",
+    "@babel/plugin-proposal-function-sent": "7",
+    "@babel/plugin-proposal-json-strings": "7",
+    "@babel/plugin-proposal-logical-assignment-operators": "7",
+    "@babel/plugin-proposal-nullish-coalescing-operator": "7",
+    "@babel/plugin-proposal-numeric-separator": "7",
+    "@babel/plugin-proposal-optional-chaining": "7",
+    "@babel/plugin-proposal-pipeline-operator": "7",
+    "@babel/plugin-proposal-throw-expressions": "7",
+    "@babel/plugin-syntax-dynamic-import": "7",
+    "@babel/plugin-syntax-import-meta": "7",
+    "@babel/preset-env": "7",
+    "@babel/preset-flow": "7",
+    "babel-eslint": "10",
+    "camelcase": "5",
+    "eslint": "5",
+    "eslint-config-airbnb": "17",
+    "eslint-config-prettier": "4",
+    "eslint-import-resolver-node": "^0.3.2",
+    "eslint-plugin-babel": "5",
+    "eslint-plugin-flowtype": "3",
+    "eslint-plugin-import": "2",
+    "eslint-plugin-jsx-a11y": "6",
+    "eslint-plugin-prettier": "3",
+    "eslint-plugin-react": "7",
+    "flow-bin": "0.100",
+    "prettier": "1"
+  },
+  "scripts": {
+    "build": "babel-node tools/run build",
+    "publish": "babel-node tools/run publish",
+    "run": "babel-node tools/run"
+  }
+}
