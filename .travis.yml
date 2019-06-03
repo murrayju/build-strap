@@ -1,8 +1,8 @@
-language: node_js
-node_js:
-- stable
+language: bash
 install:
   - git symbolic-ref --short HEAD || git checkout ${TRAVIS_BRANCH}
+script:
+- ./bs publish --publish --buildNum=${TRAVIS_BUILD_NUMBER}
 deploy:
   provider: npm
   email: justin@murrayju.com
