@@ -3,7 +3,7 @@ node_js:
 - stable
 install:
   - git config remote.origin.fetch +refs/heads/*:refs/remotes/origin/*
-  - git fetch --unshallow --tags
+  - git fetch --tags
   - git symbolic-ref --short HEAD || git checkout -b $TRAVIS_BRANCH $TRAVIS_BRANCH
 deploy:
   provider: npm

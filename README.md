@@ -3,6 +3,8 @@ A suite of functions to help with writing build scripts using javascript code (w
 
 This project builds itself, so take a look in the `tools/` folder for an example project. Run `./bs` to build.
 
+[![Build Status](https://travis-ci.org/murrayju/build-strap.svg?branch=master)](https://travis-ci.org/murrayju/build-strap)
+
 ## Create a "zero dependency" bootstrapped build
 You can set up your project to build with (practically) no pre-requisite dependencies. Simply:
 1. Copy the `*.sh`, `*.ps1`, and `*.bat` files from the root of this repository into the root of your project.
