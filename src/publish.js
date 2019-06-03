@@ -1,6 +1,6 @@
 // @flow
 import path from 'path';
-import fs from 'fs';
+import fs from 'fs-extra';
 import { run, buildLog } from './run';
 import { getVersion } from './version';
 import { getPkgName } from './pkg';
@@ -56,6 +56,10 @@ export async function publish(
   }
 
   // Publish to all repos configured in package.json
+  await fs.copyFile(
+    path.join(distDir, 'package.json'),
+    path.join(outDir, 'package.json'),
+  );
   const artifact = fs.createReadStream(tgzFilePath);
   await Promise.all([
     npmPublish(

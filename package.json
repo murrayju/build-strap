@@ -1,6 +1,6 @@
 {
   "name": "build-strap",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Node scripts for building things",
   "private": true,
   "license": "MIT",
@@ -20,7 +20,7 @@
     "devBranch": "dev",
     "npm": {
       "publish": true,
-      "registry": "https://registry.npmjs.org/"
+      "registry": "https://registry.yarnpkg.com/"
     },
     "docker": {
       "repository": "murrayju"
