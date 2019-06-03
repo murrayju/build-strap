@@ -1,8 +1,10 @@
 language: node_js
 node_js:
 - stable
-- '6'
-- '4'
+install:
+  - git config remote.origin.fetch +refs/heads/*:refs/remotes/origin/*
+  - git fetch --unshallow --tags
+  - git symbolic-ref --short HEAD || git checkout -b $TRAVIS_BRANCH $TRAVIS_BRANCH
 deploy:
   provider: npm
   email: justin@murrayju.com
