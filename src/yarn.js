@@ -6,7 +6,7 @@ import { spawn } from './cp';
 
 export async function yarn(
   args: string[] = [],
-  options: {} = {},
+  options?: ?{ [string]: any },
   mutexName?: string = '.yarn-mutex-build-tools-node',
 ): Promise<string> {
   const localYarn = path.join(
@@ -18,6 +18,7 @@ export async function yarn(
     stdio: 'inherit',
     shell: true,
     env: process.env,
+    // $FlowFixMe
     ...options,
   };
 

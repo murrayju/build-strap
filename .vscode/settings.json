@@ -18,6 +18,5 @@
     "flowtype",
     "linebreak",
     "repo"
-  ],
-  "prettier.eslintIntegration": true
+  ]
 }

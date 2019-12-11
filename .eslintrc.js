@@ -4,7 +4,7 @@ module.exports = {
   plugins: ['flowtype', 'prettier', 'babel'],
 
   extends: [
-    'airbnb',
+    'airbnb-base',
     'plugin:flowtype/recommended',
     'plugin:prettier/recommended',
     'prettier',
@@ -39,8 +39,6 @@ module.exports = {
     'no-unused-expressions': 'off',
     'babel/no-unused-expressions': 'error',
     // Allow .js files to use JSX syntax
-    // https://github.com/yannickcr/eslint-plugin-react/blob/master/docs/rules/jsx-filename-extension.md
-    'react/jsx-filename-extension': ['error', { extensions: ['.js', '.jsx'] }],
     // Forbid the use of extraneous packages
     // https://github.com/benmosher/eslint-plugin-import/blob/master/docs/rules/no-extraneous-dependencies.md
     'import/no-extraneous-dependencies': ['error', { packageDir: '.' }],

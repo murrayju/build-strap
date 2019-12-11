@@ -74,7 +74,7 @@ export async function getArtifactInfo(
 export async function tgzDir(
   srcDir: string,
   outPath: string,
-  options?: {},
+  options?: ?{ [string]: any },
 ): Promise<ArtifactInfo> {
   await makeDir(path.dirname(outPath));
   const tgzStream = tar.c(
@@ -82,6 +82,7 @@ export async function tgzDir(
       gzip: true,
       cwd: srcDir,
       portable: true,
+      // $FlowFixMe
       ...options,
     },
     ['.'],

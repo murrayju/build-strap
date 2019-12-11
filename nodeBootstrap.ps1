@@ -1,5 +1,5 @@
-$nodeVersion = "12.3.1"
-$yarnVersion = "1.16.0"
+$nodeVersion = "12.13.1"
+$yarnVersion = "1.21.1"
 $rootDir = (Get-Location)
 $downloadDir = Join-Path $rootDir "download"
 

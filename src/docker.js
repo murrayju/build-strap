@@ -101,18 +101,20 @@ export async function dockerImages(
   filter?: ?DockerImageFilter = null,
 ): Promise<DockerImage[]> {
   const s = '~|~'; // separator
-  return (await spawn(
-    'docker',
-    [
-      'images',
-      '--format',
-      `{{.Repository}}${s}{{.Tag}}${s}{{.ID}}${s}{{.Digest}}${s}{{.CreatedAt}}${s}{{.Size}}`,
-      ...(repo ? [repo] : []),
-    ],
-    {},
-    false,
-    true,
-  ))
+  return (
+    await spawn(
+      'docker',
+      [
+        'images',
+        '--format',
+        `{{.Repository}}${s}{{.Tag}}${s}{{.ID}}${s}{{.Digest}}${s}{{.CreatedAt}}${s}{{.Size}}`,
+        ...(repo ? [repo] : []),
+      ],
+      {},
+      false,
+      true,
+    )
+  )
     .split('\n')
     .map(l => {
       const [repository, tag, id, digest, createdStr, sizeStr] = l.split(s);
@@ -140,11 +142,13 @@ export async function getUntaggedDockerIds(
   repo?: ?string,
   filter?: ?DockerImageFilter = null,
 ): Promise<string[]> {
-  return (await dockerImages(
-    repo,
-    m =>
-      m.tag === '<none>' && (typeof filter === 'function' ? filter(m) : true),
-  )).map(m => m.id);
+  return (
+    await dockerImages(
+      repo,
+      m =>
+        m.tag === '<none>' && (typeof filter === 'function' ? filter(m) : true),
+    )
+  ).map(m => m.id);
 }
 
 export async function getDockerTags(
@@ -153,11 +157,14 @@ export async function getDockerTags(
   fullName: boolean = false,
   filter?: ?DockerImageFilter = null,
 ): Promise<string[]> {
-  return (await dockerImages(
-    repo,
-    m =>
-      (!id || m.id === id) && (typeof filter === 'function' ? filter(m) : true),
-  )).map(m => (fullName ? `${m.repository}:${m.tag}` : m.tag));
+  return (
+    await dockerImages(
+      repo,
+      m =>
+        (!id || m.id === id) &&
+        (typeof filter === 'function' ? filter(m) : true),
+    )
+  ).map(m => (fullName ? `${m.repository}:${m.tag}` : m.tag));
 }
 
 export async function getDockerDigest(imageId: string, repo?: string) {
@@ -306,13 +313,15 @@ export async function dockerPullAndRunContainer(
   } catch (err) {
     buildLog(`docker pull failed (${err.message}), attempting to continue...`);
   }
-  const containerId = (await spawn(
-    'docker',
-    ['run', '--rm', '-d', ...runArgs, image, ...cmd],
-    null,
-    false,
-    true,
-  )).trim();
+  const containerId = (
+    await spawn(
+      'docker',
+      ['run', '--rm', '-d', ...runArgs, image, ...cmd],
+      null,
+      false,
+      true,
+    )
+  ).trim();
   if (network) {
     await dockerNetworkConnect(network, containerId, alias);
   }

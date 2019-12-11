@@ -40,10 +40,12 @@ export default async function dockerCleanup(
     ...(await getUntaggedDockerIds(undefined, filterOld)),
 
     // images with no repo and no tag
-    ...(await dockerImages(
-      null,
-      m => m.repository === '<none>' && m.tag === '<none>' && filterOld(m),
-    )).map(m => m.id),
+    ...(
+      await dockerImages(
+        null,
+        m => m.repository === '<none>' && m.tag === '<none>' && filterOld(m),
+      )
+    ).map(m => m.id),
 
     // any leftover tags from prior builds (only if purgeAll or purgeOld)
     ...(purgeAll || purgeOld
