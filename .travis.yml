@@ -4,7 +4,7 @@ install:
 script:
   - echo "TRAVIS_PULL_REQUEST=${TRAVIS_PULL_REQUEST}"
   - |
-    if [[ "${TRAVIS_PULL_REQUEST}" = "false"]]
+    if [ "${TRAVIS_PULL_REQUEST}" = false]
     then
       ./bs publish --publish --buildNum=${TRAVIS_BUILD_NUMBER}
     else
