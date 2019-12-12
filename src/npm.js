@@ -47,7 +47,9 @@ export async function npmGetVersions(
       await npmExec(['show', packageName, 'versions'], npmPath),
     );
   } catch (err) {
-    buildLog('warning: failed to find existing package in npm registry');
+    buildLog(
+      `warning: failed to find existing package for ${packageName} in npm registry: ${err.message}`,
+    );
     return [];
   }
 }

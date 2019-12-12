@@ -1,6 +1,6 @@
 {
   "name": "build-strap",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Node scripts for building things",
   "private": true,
   "license": "MIT",
@@ -75,6 +75,9 @@
     "eslint-plugin-react": "^7.17.0",
     "flow-bin": "^0.113.0",
     "prettier": "^1.19.1"
+  },
+  "resolutions": {
+    "set-value": "2.0.1"
   },
   "scripts": {
     "build": "babel-node tools/run build",
