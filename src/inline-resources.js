@@ -24,10 +24,10 @@ export async function inlineResources(projectPath: string) {
 
   // For each file, inline the templates and styles under it and write the new file.
   await Promise.all(
-    files.map(async filePath => {
+    files.map(async (filePath) => {
       const fullFilePath = path.join(projectPath, filePath);
       const content = await readFile(fullFilePath, 'utf-8');
-      const inlined = inlineResourcesFromString(content, url => {
+      const inlined = inlineResourcesFromString(content, (url) => {
         // Resolve the template url.
         const templatePath = path.join(path.dirname(fullFilePath), url);
         recordDependency(fullFilePath, templatePath);
@@ -50,7 +50,7 @@ export function webpackInlineResourceLoader(content: string) {
   this.cacheable(true);
   const dir = this.context;
   const that = this;
-  return inlineResourcesFromString(content, url => {
+  return inlineResourcesFromString(content, (url) => {
     // Resolve the template url.
     const fullPath = path.join(dir, url);
     // Make sure this file gets watched
@@ -96,7 +96,7 @@ function processTemplate(content: string, cbFn: UrlResolver) {
 function inlineTemplate(content: string, urlResolver: UrlResolver) {
   return processTemplate(
     content,
-    templateUrl =>
+    (templateUrl) =>
       `\`${fs
         .readFileSync(urlResolver(templateUrl), 'utf-8')
         .replace(/([\n\r]\s*)+/gm, ' ')}\``,
@@ -104,7 +104,7 @@ function inlineTemplate(content: string, urlResolver: UrlResolver) {
 }
 
 function requireTemplate(content: string, loader: string = '') {
-  return processTemplate(content, url => `require('${loader}${url}')`);
+  return processTemplate(content, (url) => `require('${loader}${url}')`);
 }
 
 // The cbFn is given the url of a single css file, and should return the string to replace it
@@ -114,7 +114,7 @@ function processStyle(content: string, cbFn: UrlResolver) {
     (m, styleUrls) =>
       // eslint-disable-next-line no-eval
       `styles: [${eval(styleUrls)
-        .map(styleUrl => cbFn(styleUrl))
+        .map((styleUrl) => cbFn(styleUrl))
         .join(',\n')}]`,
   );
 }
@@ -129,7 +129,7 @@ function processStyle(content: string, cbFn: UrlResolver) {
 function inlineStyle(content: string, urlResolver: UrlResolver) {
   return processStyle(
     content,
-    styleUrl =>
+    (styleUrl) =>
       `\`${fs
         .readFileSync(urlResolver(styleUrl), 'utf-8')
         .replace(/([\n\r]\s*)+/gm, ' ')}\``,
@@ -137,7 +137,7 @@ function inlineStyle(content: string, urlResolver: UrlResolver) {
 }
 
 function requireStyle(content: string, loader: string = '') {
-  return processStyle(content, url => `require('${loader}${url}')`);
+  return processStyle(content, (url) => `require('${loader}${url}')`);
 }
 
 /**

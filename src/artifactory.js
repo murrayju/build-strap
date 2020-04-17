@@ -71,7 +71,7 @@ export async function artifactoryPut(
   const urls = typeof url === 'string' ? [url] : url;
 
   return Promise.all(
-    urls.map(uri =>
+    urls.map((uri) =>
       artifactoryRequest(
         {
           method: 'PUT',
@@ -105,7 +105,7 @@ export async function artifactoryDelete(
   }
 
   return Promise.all(
-    urls.map(uri =>
+    urls.map((uri) =>
       artifactoryRequest(
         {
           method: 'DELETE',
@@ -141,7 +141,7 @@ export async function artifactoryNpm(
   const existing = await getNpmArtifacts(false, artifactoryConfig, creds);
   const { isRelease, npm: npmVersion } = await getVersion();
   const regex = new RegExp(`${npmVersion}.tgz$`);
-  const exists = !!existing.find(c => c.path.match(regex));
+  const exists = !!existing.find((c) => c.path.match(regex));
   if (exists) {
     if (skipExisting) {
       buildLog(
@@ -239,7 +239,7 @@ const getRemoteArtifactChildrenInfo = async (
   artifactoryCreds?: ArtifactoryCreds,
 ) =>
   Promise.all(
-    info.children.map(async c =>
+    info.children.map(async (c) =>
       getRemoteArtifactInfo(
         rootUri,
         repo,
@@ -273,7 +273,7 @@ async function cleanChildren(
   );
   // Filter out children that we absolutely will not delete
   const integrationChildren = keepFilter
-    ? children.filter(c => !keepFilter(c))
+    ? children.filter((c) => !keepFilter(c))
     : children;
 
   // Determine which integration artifacts to keep (they are recent and not too numerous)
@@ -281,7 +281,7 @@ async function cleanChildren(
     ? moment().subtract(daysToKeep, 'days')
     : null;
   const filtered = timeThreshold
-    ? integrationChildren.filter(c =>
+    ? integrationChildren.filter((c) =>
         moment(c.lastModified).isAfter(timeThreshold),
       )
     : integrationChildren;
@@ -304,8 +304,8 @@ async function cleanChildren(
   // Delete any integration artifacts that didn't make the limited list
   return Promise.all(
     integrationChildren
-      .filter(c => limited.indexOf(c) < 0)
-      .map(async c => {
+      .filter((c) => limited.indexOf(c) < 0)
+      .map(async (c) => {
         buildLog(`Deleting artifact: ${c.repo}${c.path}`);
         await artifactoryDelete(
           `${rootUri}/${c.repo}/${c.path}`,
@@ -338,7 +338,7 @@ async function cleanBranchFolders(
     artifactoryCreds,
   );
   await Promise.all(
-    children.map(async c => {
+    children.map(async (c) => {
       const [branch] = c.path.split('/').slice(-1);
       if (branch === getReleaseBranch()) {
         buildLog(
@@ -436,14 +436,14 @@ export async function artifactoryCleanup(
       scope ? `${scope}/${name}/-/${scope}` : `${name}/-`,
       dToK,
       mToK,
-      c => !!c.path.match(releaseRegex),
+      (c) => !!c.path.match(releaseRegex),
       artifactoryCreds,
     );
   }
   return true;
 }
 
-function uniqBy<T>(a: T[], key: T => string): T[] {
+function uniqBy<T>(a: T[], key: (T) => string): T[] {
   const seen = new Set();
   return a.filter((item: T) => {
     const k = key(item);
@@ -479,11 +479,11 @@ export async function getNpmArtifacts(
         npmPath,
         artifactoryCreds,
       ),
-      c => c.uri,
+      (c) => c.uri,
     );
     return releasedOnly
       ? // $FlowFixMe
-        children.filter(c => !!c.path.match(releaseRegex))
+        children.filter((c) => !!c.path.match(releaseRegex))
       : children;
   } catch (err) {
     if (err.statusCode === 404) return [];

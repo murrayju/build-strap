@@ -37,7 +37,7 @@ export const moveDir = async (source: string, target: string) => {
     dot: true,
   });
   await Promise.all(
-    dirs.map(async dir => {
+    dirs.map(async (dir) => {
       const from = path.resolve(source, dir);
       const to = path.resolve(target, dir);
       await makeDir(path.dirname(to));
@@ -51,7 +51,7 @@ export const copyDir = async (
   target: string,
   fileGlob: string = '**/*.*',
   globOptions?: ?Object = null,
-  renameFn: (name: string) => string = n => n,
+  renameFn: (name: string) => string = (n) => n,
 ) => {
   const paths = await readDir(fileGlob, {
     cwd: source,
@@ -61,7 +61,7 @@ export const copyDir = async (
     ...globOptions,
   });
   await Promise.all(
-    paths.map(async p => {
+    paths.map(async (p) => {
       const from = path.resolve(source, p);
       const to = path.resolve(target, renameFn(p));
       await makeDir(path.dirname(to));

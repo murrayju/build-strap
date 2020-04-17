@@ -5,6 +5,7 @@ export * from './clean';
 export * from './copy';
 export * from './cp';
 export * from './docker';
+export * from './flow';
 export * from './fs';
 export * from './git';
 export * from './hg';

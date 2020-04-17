@@ -22,13 +22,13 @@ const generateHash = async (
   new Promise((resolve, reject) => {
     stream
       .pipe(crypto.createHash(type).setEncoding('hex'))
-      .on('finish', function() {
+      .on('finish', function () {
         resolve(this.read());
       })
-      .on('end', function() {
+      .on('end', function () {
         resolve(this.read());
       })
-      .on('error', err => reject(err));
+      .on('error', (err) => reject(err));
   });
 
 const countBytes = async (stream: stream$Readable): Promise<number> =>
@@ -38,7 +38,7 @@ const countBytes = async (stream: stream$Readable): Promise<number> =>
       .pipe(counter)
       .on('finish', () => resolve(counter.bytes))
       .on('end', () => resolve(counter.bytes))
-      .on('error', err => reject(err));
+      .on('error', (err) => reject(err));
   });
 
 const writeStreamToFile = async (stream: stream$Readable, filePath: string) =>
@@ -49,7 +49,7 @@ const writeStreamToFile = async (stream: stream$Readable, filePath: string) =>
         buildLog(`Successfully wrote file: ${filePath}`);
         resolve();
       })
-      .on('error', err => reject(err));
+      .on('error', (err) => reject(err));
   });
 
 // Take the given file (path or stream) and compute the info that artifactory needs.
@@ -78,6 +78,7 @@ export async function tgzDir(
 ): Promise<ArtifactInfo> {
   await makeDir(path.dirname(outPath));
   const tgzStream = tar.c(
+    // $FlowFixMe
     {
       gzip: true,
       cwd: srcDir,

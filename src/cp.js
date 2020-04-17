@@ -2,10 +2,23 @@
 import cp from 'child_process';
 import { buildLog } from './run';
 
+export type SpawnOptions = {|
+  cwd?: string,
+  env?: Object,
+  argv0?: string,
+  stdio?: string | Array<any>,
+  detached?: boolean,
+  uid?: number,
+  gid?: number,
+  shell?: boolean | string,
+  windowsVerbatimArguments?: boolean,
+  windowsHide?: boolean,
+|};
+
 export async function spawn(
   command: string,
   args?: string[],
-  options?: ?Object,
+  options?: ?SpawnOptions,
   pipeOutput: boolean = false,
   captureOutput: boolean = false,
 ): Promise<string> {
@@ -14,6 +27,7 @@ export async function spawn(
       const toStr = () => `${command}${args ? ` ${args.join(' ')}` : ''}`;
       const p = cp.spawn(command, args, {
         ...options,
+        // $FlowFixMe
         ...(pipeOutput && !captureOutput && !(options && options.stdio)
           ? { stdio: 'inherit' }
           : {}),
@@ -25,7 +39,7 @@ export async function spawn(
           if (pipeOutput) {
             p.stdout.pipe(process.stdout);
           }
-          p.stdout.on('data', d => {
+          p.stdout.on('data', (d) => {
             output += d.toString();
           });
         } else {
@@ -35,7 +49,7 @@ export async function spawn(
           if (pipeOutput) {
             p.stderr.pipe(process.stderr);
           }
-          p.stderr.on('data', d => {
+          p.stderr.on('data', (d) => {
             output += d.toString();
           });
         } else {
@@ -43,7 +57,7 @@ export async function spawn(
         }
       }
 
-      p.on('close', code => {
+      p.on('close', (code) => {
         if (code === 0) {
           resolve(output);
         } else {
@@ -51,13 +65,13 @@ export async function spawn(
         }
       });
 
-      p.on('exit', code => {
+      p.on('exit', (code) => {
         if (code !== 0) {
           reject(new Error(`${toStr()} => ${code} (error)`));
         }
       });
 
-      p.on('error', err => {
+      p.on('error', (err) => {
         reject(err);
       });
     } catch (err) {
@@ -66,9 +80,22 @@ export async function spawn(
   });
 }
 
+export type ExecOptions = {|
+  cwd?: string,
+  env?: Object,
+  encoding?: string,
+  shell?: string,
+  timeout?: number,
+  maxBuffer?: number,
+  killSignal?: string | number,
+  uid?: number,
+  gid?: number,
+  windowsHide?: boolean,
+|};
+
 export const exec = async (
   command: string,
-  options?: Object,
+  options?: ExecOptions,
 ): Promise<{ stdout: string | Buffer, stderr: string | Buffer }> =>
   new Promise((resolve, reject) => {
     cp.exec(command, options, (err, stdout, stderr) => {
@@ -82,5 +109,5 @@ export const exec = async (
   });
 
 export const onKillSignal = (cbFn: () => any) => {
-  ['SIGINT', 'SIGTERM'].forEach(sig => process.on(sig, cbFn));
+  ['SIGINT', 'SIGTERM'].forEach((sig) => process.on(sig, cbFn));
 };

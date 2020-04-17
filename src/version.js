@@ -5,7 +5,7 @@ import { getPkg, getCfg } from './pkg';
 import { buildLog } from './run';
 
 function getBuild() {
-  const arg = process.argv.find(el => /^--buildNum=\d+$/.test(el));
+  const arg = process.argv.find((el) => /^--buildNum=\d+$/.test(el));
   return (arg && arg.substr(11)) || process.env.BUILD_NUMBER || 0;
 }
 

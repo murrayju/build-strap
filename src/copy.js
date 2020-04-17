@@ -54,7 +54,7 @@ export async function copySrc(
       // Check dependencies
       if (dependencies[dest]) {
         await Promise.all(
-          dependencies[dest].map(async dep => {
+          dependencies[dest].map(async (dep) => {
             const toCopy = path.join(from, path.relative(to, dep));
             await copyFile(toCopy, dep);
             buildLog(`copied '${dep}' due to changed dependency`);

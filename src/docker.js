@@ -57,7 +57,7 @@ export async function dockerTag(
   repo?: string = getDockerRepo(),
 ) {
   return Promise.all(
-    tags.map(async t => {
+    tags.map(async (t) => {
       await spawn('docker', ['tag', imageId, `${repo}:${t}`]);
       buildLog(`Tagged image ${imageId} as ${repo}:${t}`);
     }),
@@ -116,7 +116,7 @@ export async function dockerImages(
     )
   )
     .split('\n')
-    .map(l => {
+    .map((l) => {
       const [repository, tag, id, digest, createdStr, sizeStr] = l.split(s);
       return {
         repository,
@@ -128,14 +128,14 @@ export async function dockerImages(
       };
     })
     .filter(
-      m =>
+      (m) =>
         (m && m.id) != null &&
         (typeof filter === 'function' ? filter(m) : true),
     );
 }
 
 export async function getDockerId(tag: string = 'latest', repo?: ?string) {
-  return (await dockerImages(repo, m => m.tag === tag)).map(m => m.id)[0];
+  return (await dockerImages(repo, (m) => m.tag === tag)).map((m) => m.id)[0];
 }
 
 export async function getUntaggedDockerIds(
@@ -145,10 +145,10 @@ export async function getUntaggedDockerIds(
   return (
     await dockerImages(
       repo,
-      m =>
+      (m) =>
         m.tag === '<none>' && (typeof filter === 'function' ? filter(m) : true),
     )
-  ).map(m => m.id);
+  ).map((m) => m.id);
 }
 
 export async function getDockerTags(
@@ -160,16 +160,16 @@ export async function getDockerTags(
   return (
     await dockerImages(
       repo,
-      m =>
+      (m) =>
         (!id || m.id === id) &&
         (typeof filter === 'function' ? filter(m) : true),
     )
-  ).map(m => (fullName ? `${m.repository}:${m.tag}` : m.tag));
+  ).map((m) => (fullName ? `${m.repository}:${m.tag}` : m.tag));
 }
 
 export async function getDockerDigest(imageId: string, repo?: string) {
-  return (await dockerImages(repo, m => m.id === imageId)).map(
-    m => m.digest,
+  return (await dockerImages(repo, (m) => m.id === imageId)).map(
+    (m) => m.digest,
   )[0];
 }
 
@@ -204,7 +204,7 @@ export async function dockerRmi(
   // must do these sequentially, or they will interfere with each other
   await images.reduce(async (prev, image) => {
     await prev;
-    await spawn('docker', ['rmi', image], { stdio: 'inherit' }).catch(err => {
+    await spawn('docker', ['rmi', image], { stdio: 'inherit' }).catch((err) => {
       if (!ignoreErrors) {
         throw err;
       }
@@ -235,18 +235,18 @@ export async function dockerNetworks(): Promise<DockerNetwork[]> {
   return (await spawn('docker', ['network', 'ls'], {}, false, true))
     .split('\n')
     .slice(1)
-    .map(l => {
+    .map((l) => {
       const [id, name, driver, scope] =
         // $FlowFixMe
         l.match(/^([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)/)?.slice(1) || [];
       return { id, name, driver, scope };
     })
-    .filter(m => m != null);
+    .filter((m) => m != null);
 }
 
 export async function dockerNetworkFind(networkName: string) {
   return (await dockerNetworks()).find(
-    n => n.name === networkName || n.id === networkName,
+    (n) => n.name === networkName || n.id === networkName,
   );
 }
 

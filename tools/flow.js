@@ -1,10 +1,19 @@
-import { buildLog, spawn } from '../src/index';
+// @flow
+import { buildLog, flow as execFlow } from '../src/index';
 
-// Normally handled by eslint, but we get more debug info when run separately
-export default async function flow() {
-  if (process.argv.includes('--no-flow')) {
-    buildLog('Skipping due to --no-flow');
+// Run the flow linter
+export default async function flow({
+  allBranches = process.argv.includes('--flow-all-branches'),
+  incremental = !process.argv.includes('--flow-full-check'),
+  skip = process.argv.includes('--flow-skip'),
+}: {
+  allBranches?: boolean,
+  incremental?: boolean,
+  skip?: boolean,
+} = {}) {
+  if (skip) {
+    buildLog('Skipping due to --flow-skip');
     return;
   }
-  await spawn('flow', ['check'], { stdio: 'inherit', shell: true });
+  await execFlow({ allBranches, incremental });
 }

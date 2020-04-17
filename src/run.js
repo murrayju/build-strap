@@ -54,7 +54,7 @@ export function runCli(
     : passthroughArgv
     ? argv.slice(3)
     : [];
-  return run(module, ...args).catch(err => {
+  return run(module, ...args).catch((err) => {
     console.error((err && err.stack) || err);
     process.exit(1);
   });

@@ -19,7 +19,7 @@ export default async function copy() {
   const pkg = getPkg();
   await Promise.all([
     // Support for flow annotation in published libraries
-    copyDir('./src', paths.dist, '**/*.js', null, n => `${n}.flow`),
+    copyDir('./src', paths.dist, '**/*.js', null, (n) => `${n}.flow`),
     copyDir('./src', paths.dist, '**/!(*.js)'),
     writeFile(
       paths.in(paths.dist, 'package.json'),
@@ -37,7 +37,7 @@ export default async function copy() {
       ),
     ),
     Promise.all(
-      ['LICENSE', 'README.md'].map(f => copyFile(f, paths.in(paths.dist, f))),
+      ['LICENSE', 'README.md'].map((f) => copyFile(f, paths.in(paths.dist, f))),
     ),
   ]);
 }

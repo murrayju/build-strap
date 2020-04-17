@@ -25,7 +25,10 @@ export function getCertConfig(): CertConfig {
 export function getIpAddresses() {
   const iFaces = os.networkInterfaces();
   return Object.keys(iFaces).reduce(
-    (prev, ifName) => [...prev, ...iFaces[ifName].map(iFace => iFace.address)],
+    (prev, ifName) => [
+      ...prev,
+      ...iFaces[ifName].map((iFace) => iFace.address),
+    ],
     [],
   );
 }

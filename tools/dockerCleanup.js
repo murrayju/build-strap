@@ -15,7 +15,7 @@ export default async function dockerCleanup(
   purgeOld: boolean = process.argv.includes('--purge-old'),
 ) {
   await Promise.all(
-    ['./latest.build.tag', './latest.build.id'].map(async f =>
+    ['./latest.build.tag', './latest.build.id'].map(async (f) =>
       fs.ensureFile(f),
     ),
   );
@@ -43,9 +43,9 @@ export default async function dockerCleanup(
     ...(
       await dockerImages(
         null,
-        m => m.repository === '<none>' && m.tag === '<none>' && filterOld(m),
+        (m) => m.repository === '<none>' && m.tag === '<none>' && filterOld(m),
       )
-    ).map(m => m.id),
+    ).map((m) => m.id),
 
     // any leftover tags from prior builds (only if purgeAll or purgeOld)
     ...(purgeAll || purgeOld
@@ -53,6 +53,6 @@ export default async function dockerCleanup(
       : []),
   ]);
   await Promise.all(
-    ['./latest.build.tag', './latest.build.id'].map(async f => fs.remove(f)),
+    ['./latest.build.tag', './latest.build.id'].map(async (f) => fs.remove(f)),
   );
 }

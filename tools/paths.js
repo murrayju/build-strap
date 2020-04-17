@@ -5,7 +5,7 @@ const paths = {
 };
 
 // paths at the root
-['src', 'out', 'dist'].forEach(n => {
+['src', 'out', 'dist'].forEach((n) => {
   paths[n] = path.join(paths.root, n);
 });
 paths.distSrc = path.join(paths.dist, 'src');

@@ -1,11 +1,12 @@
-import { yarn, buildLog } from '../src/index';
+import { yarnUpgrade, buildLog } from '../src/index';
 
 // run yarn upgrade
-export default async function upgrade() {
+export default async function upgrade(
+  outdated = process.argv.includes('--outdated'),
+) {
   if (process.argv.includes('--no-upgrade')) {
     buildLog('Skipping due to --no-upgrade');
     return;
   }
-  await yarn(['upgrade']);
-  await yarn(['outdated']);
+  await yarnUpgrade({ outdated });
 }

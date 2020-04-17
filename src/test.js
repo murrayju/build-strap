@@ -15,7 +15,7 @@ export async function karmaTest(
     autoWatch: false,
     singleRun: !watch,
   });
-  const server = new Server(testConfig, exitCode => {
+  const server = new Server(testConfig, (exitCode) => {
     buildLog(`Karma has exited with code ${exitCode}`);
   });
   onKillSignal(() => stopper.stop(testConfig));
@@ -24,7 +24,7 @@ export async function karmaTest(
   async function doTest() {
     if (!started) {
       await Promise.all([
-        new Promise(resolve => {
+        new Promise((resolve) => {
           server.on('browsers_ready', resolve);
         }),
         server.start(),
@@ -34,7 +34,7 @@ export async function karmaTest(
     if (watch) {
       // await server.refreshFiles();
       await new Promise((resolve, reject) => {
-        runner.run(testConfig, exitCode => {
+        runner.run(testConfig, (exitCode) => {
           buildLog(`Karma run completed with exit code ${exitCode}`);
           if (exitCode === 0 || watch) {
             resolve(exitCode);

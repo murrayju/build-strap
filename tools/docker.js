@@ -26,7 +26,7 @@ export default async function docker() {
 
   // ensure that these files exist, so that we can guarantee to stash them
   await Promise.all(
-    ['./latest.build.tag', './latest.build.id'].map(async f =>
+    ['./latest.build.tag', './latest.build.id'].map(async (f) =>
       fs.ensureFile(f),
     ),
   );

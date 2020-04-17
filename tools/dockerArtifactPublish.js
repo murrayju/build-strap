@@ -24,7 +24,7 @@ export default async function dockerArtifactPublish(
     [
       '--rm',
       ...Object.keys(process.env)
-        .filter(k => envWhitelist.includes(k))
+        .filter((k) => envWhitelist.includes(k))
         .reduce(
           (arr, k) => [...arr, '--env', `${k}=${process.env[k] || ''}`],
           [],
