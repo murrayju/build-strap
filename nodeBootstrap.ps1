@@ -1,11 +1,11 @@
-$nodeVersion = "12.13.1"
-$yarnVersion = "1.21.1"
+$nodeVersion = "12.18.2"
+$yarnVersion = "1.22.4"
 $rootDir = (Get-Location)
 $downloadDir = Join-Path $rootDir "download"
 
 $x64 = [IntPtr]::Size -eq 8
 $nodeArch = if ($x64) { "x64" } else { "x86" }
-$nodeUrl = "http://nodejs.org/dist/v$nodeVersion/win-$nodeArch/node.exe"
+$nodeUrl = "https://nodejs.org/dist/v$nodeVersion/win-$nodeArch/node.exe"
 $yarnUrl = "https://yarnpkg.com/downloads/$yarnVersion/yarn-v$yarnVersion.tar.gz"
 $nodeDir = Join-Path $downloadDir "node-v$nodeVersion$nodeArch"
 
