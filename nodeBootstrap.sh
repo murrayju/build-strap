@@ -1,6 +1,6 @@
 #!/bin/bash
-nodeVersion=12.13.1
-yarnVersion=1.21.1
+nodeVersion=12.18.2
+yarnVersion=1.22.4
 downloadDir=`pwd`/download
 mkdir -p $downloadDir
 
@@ -19,7 +19,7 @@ else
 	exit
 fi
 nodeGz=$nodeName.tar.gz
-nodeUrl=http://nodejs.org/dist/v$nodeVersion/$nodeGz
+nodeUrl=https://nodejs.org/dist/v$nodeVersion/$nodeGz
 nodeDl=$downloadDir/$nodeGz
 
 if [ ! -f $nodeDl ]; then
