@@ -5,7 +5,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-    - run: ./bs publish --buildNum=$GITHUB_RUN_NUMBER
-      if: ${{ github.event_name == 'pull_request' }}
     - run: ./bs publish --buildNum=$GITHUB_RUN_NUMBER --publish
-      if: ${{ github.event_name != 'pull_request' }}
+      env:
+        NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
