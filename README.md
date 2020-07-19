@@ -6,9 +6,14 @@ This project builds itself, so take a look in the `tools/` folder for an example
 [![Build Status](https://travis-ci.org/murrayju/build-strap.svg?branch=master)](https://travis-ci.org/murrayju/build-strap)
 
 ## Create a "zero dependency" bootstrapped build
-You can set up your project to build with (practically) no pre-requisite dependencies. Simply:
-1. Copy the `*.sh`, `*.ps1`, and `*.bat` files from the root of this repository into the root of your project.
-2. Modify `nodeBootstrap.sh` and `nodeBootstrap.ps1` to use the desired version of node.
+You can set up your project to build with (practically) no pre-requisite dependencies.
+- Copy the [build-strap-cli](https://github.com/murrayju/build-strap-cli/) into the root of your project.
+
+```
+curl -o bs https://raw.githubusercontent.com/murrayju/build-strap-cli/master/bs && chmod +x bs
+curl -o bs.ps1 https://raw.githubusercontent.com/murrayju/build-strap-cli/master/bs.ps1
+curl -o bs.bat https://raw.githubusercontent.com/murrayju/build-strap-cli/master/bs.bat
+```
 
 ## Add the dependency reference
 Add `build-strap` to your `package.json` (likely in the `devDependencies` section).
@@ -23,6 +28,8 @@ By default, the build tools read project-specific configuration from your `packa
   "name": "your-project-name",
   "version": "1.2.3",
   "buildStrap": {
+    "nodeVersion": "12.18.2",
+    "yarnVersion": "1.22.4",
     "repoType": "git",
     "copyright": "your company",
     "releaseBranch": "master",
