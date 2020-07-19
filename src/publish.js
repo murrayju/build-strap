@@ -10,28 +10,46 @@ import { npmPublish } from './npm';
 import type { NpmConfig, NpmCreds } from './npm';
 import { tgzDir } from './tgz';
 
-// tgz the distDir, and copy it to the outDir
-// if toArtifactory is true, also publishes to artifactory
-export async function publish(
+export type PublishConfiguration = {
   distDir: string, // What to bundle up and publish
   outDir: string, // Where the bundled tgz file should go
   doPublish: boolean, // Actually publish?
+
   prePublishFn?: () => any, // (optional) Callback to invoke before publishing
   fileName?: string, // (optional) Specify the tgz file name
   artifactoryConfig?: ArtifactoryConfig, // (optional) Artifactory config info (normally in package.json)
   artifactoryCreds?: ArtifactoryCreds, // (optional) Artifactory credentials (normally from ENV var)
   npmPath?: string, // (optional) Path to npm executable
   npmTag?: string, // (optional) tag to apply to npm package
-  npmSkipExisting?: boolean = false, // (optional) if true, don't error when artifact already exists (skip publish)
+  npmSkipExisting?: boolean, // (optional) if true, don't error when artifact already exists (skip publish)
   npmConfig?: NpmConfig, // (optional) Npm config info (normally in package.json)
   npmCreds?: NpmCreds, // (optional) Npm credentials (normally from ENV var)
   npmAuthToken?: string, // (optional) Npm auth token (normally from ENV var)
-) {
+};
+
+// tgz the distDir, and copy it to the outDir
+// if toArtifactory is true, also publishes to artifactory
+export async function publish({
+  distDir,
+  outDir,
+  doPublish,
+  prePublishFn,
+  fileName,
+  artifactoryConfig,
+  artifactoryCreds,
+  npmPath,
+  npmTag,
+  npmSkipExisting = false,
+  npmConfig,
+  npmCreds,
+  npmAuthToken,
+}: PublishConfiguration) {
   if (typeof prePublishFn === 'function') {
     await run(async () => {
       await prePublishFn();
     });
   }
+
   const version = await getVersion();
   const name = getPkgName();
 

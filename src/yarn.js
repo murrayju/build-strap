@@ -2,60 +2,56 @@
 import md5File from 'md5-file';
 import fs from 'fs-extra';
 import path from 'path';
-import os from 'os';
-import { spawn } from './cp';
-import type { SpawnOptions } from './cp';
+import { spawnAdv } from './cp';
+import type { SpawnOptions, SpawnResult } from './cp';
 import { buildLog } from './run';
 import { readDir } from './fs';
+import { getPkg } from './pkg';
 
-export async function yarn(
-  args: string[] = [],
-  options?: ?SpawnOptions,
-  mutexName?: string = '.yarn-mutex-build-tools-node',
-  pipeOutput?: boolean,
-  captureOutput?: boolean,
-): Promise<string> {
+export type YarnOptions = {|
+  args?: string[],
+  spawnOptions?: ?SpawnOptions,
+|};
+
+export async function yarnAdv(opts?: YarnOptions): Promise<SpawnResult> {
+  const { args = [], spawnOptions } = opts || {};
   const localYarn = path.join(
     path.dirname(process.execPath),
     '/node_modules/yarn/bin/yarn.js',
   );
 
-  const opts = {
+  const spawnOpts = {
     stdio: 'inherit',
     shell: true,
     env: process.env,
-    ...options,
+    ...spawnOptions,
   };
-
-  const theArgs = [
-    '--mutex',
-    `file:${path.join(os.tmpdir(), mutexName)}`,
-    ...args,
-  ];
 
   return (await fs.exists(localYarn))
     ? // prefer to use local copy of yarn
-      spawn(
-        process.execPath,
-        [localYarn, ...theArgs],
-        opts,
-        pipeOutput,
-        captureOutput,
-      )
+      spawnAdv(process.execPath, [localYarn, ...args], spawnOpts)
     : // fall back to globally installed yarn
-      spawn('yarn', theArgs, opts, pipeOutput, captureOutput);
+      spawnAdv('yarn', args, spawnOpts);
+}
+
+export async function yarn(opts?: YarnOptions): Promise<string> {
+  const { args = [], spawnOptions } = opts || {};
+  return yarnAdv({
+    args,
+    spawnOptions: { rejectOnErrorCode: true, ...spawnOptions },
+  }).then((r) => r.output);
 }
 
 export const yarnFiles = ['./package.json', './yarn.lock'];
 
-export type YarnInstallOpts = {
+export type YarnInstallOptions = {|
   nodeModulesPath?: string,
   hashFilePath?: string,
   force?: boolean,
-};
+|};
 
 // Smart yarn invocation, only if package changed
-export async function yarnInstall(opts?: YarnInstallOpts) {
+export async function yarnInstall(opts?: YarnInstallOptions) {
   const {
     nodeModulesPath = './node_modules',
     hashFilePath = './download/buildHash_yarn.md5',
@@ -83,26 +79,46 @@ export async function yarnInstall(opts?: YarnInstallOpts) {
   await fs.writeFile(hashFilePath, currentHash);
 }
 
-export type YarnUpgradeOpts = {
+export type YarnUpgradeOptions = {|
+  /**
+   * Use `yarn outdated` to find packages that should be upgraded
+   * May include breaking changes (major version changes)
+   */
   outdated?: boolean,
-};
+  /**
+   * `false` by default
+   * we assume any package with an explicit version shouldn't be touched
+   */
+  all?: boolean,
+|};
 
-export async function yarnUpgrade(opts?: YarnUpgradeOpts) {
-  const { outdated = false } = opts || {};
+export async function yarnUpgrade(opts?: YarnUpgradeOptions) {
+  const { outdated = false, all = false } = opts || {};
   if (outdated) {
-    const output = await yarn(
-      ['outdated'],
-      { stdio: 'pipe' },
-      undefined,
-      false,
-      true,
-    );
-    const packages = output
-      .split('\n')
-      .slice(5, -1)
-      .map((l) => l.split(/\s+/)[0]);
-    await yarn(['add', ...packages]);
+    const { code, stdout } = await yarnAdv({
+      args: ['outdated'],
+      spawnOptions: { stdio: 'pipe', captureOutput: true },
+    });
+    if (code === 0) {
+      buildLog('No outdated packages.');
+    } else {
+      const { dependencies = {}, devDependencies = {} } = getPkg();
+      const packages = stdout
+        .split('\n')
+        .slice(5, -1)
+        .map((l) => l.split(/\s+/)[0])
+        .filter(
+          (p) =>
+            all || !/^\d/.test(dependencies[p] || devDependencies[p] || ''),
+        );
+      if (packages.length) {
+        await yarn({ args: ['add', ...packages] });
+        buildLog(`Upgraded: ${packages.join(', ')}`);
+      } else {
+        buildLog('No eligible outdated packages');
+      }
+    }
   } else {
-    await yarn(['upgrade']);
+    await yarn({ args: ['upgrade'] });
   }
 }

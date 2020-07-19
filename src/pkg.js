@@ -15,6 +15,10 @@ export type BuildStrapConfig = {
   npm?: NpmConfig,
 };
 
+type StringMap = {
+  [string]: string,
+};
+
 export type PackageJson = {
   name: string,
   version: string,
@@ -24,15 +28,11 @@ export type PackageJson = {
   authors?: string[],
   repository?: string,
   main?: string,
-  dependencies?: {
-    [string]: string,
-  },
-  devDependencies?: {
-    [string]: string,
-  },
-  scripts?: {
-    [string]: string,
-  },
+  dependencies?: StringMap,
+  devDependencies?: StringMap,
+  peerDependencies?: StringMap,
+  engines?: StringMap,
+  scripts?: StringMap,
   // our addition
   buildStrap: BuildStrapConfig,
 };

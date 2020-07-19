@@ -1,3 +1,4 @@
+// @flow
 import copy from './copy';
 import babel from './babel';
 import lint from './lint';

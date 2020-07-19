@@ -1,3 +1,4 @@
+// @flow
 import { clean, buildLog } from '../src/index';
 
 export default async function cleanYarn() {

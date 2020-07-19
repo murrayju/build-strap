@@ -107,8 +107,7 @@ export async function generateCert(
       '-out',
       keyFile,
     ],
-    null,
-    true,
+    { pipeOutput: true },
   );
   buildLog('generating csr file...');
   await spawn(
@@ -127,8 +126,7 @@ export async function generateCert(
       '-config',
       confFile,
     ],
-    null,
-    true,
+    { pipeOutput: true },
   );
   buildLog('generating cert...');
   await spawn(
@@ -149,7 +147,6 @@ export async function generateCert(
       '-extensions',
       'v3_req',
     ],
-    null,
-    true,
+    { pipeOutput: true },
   );
 }

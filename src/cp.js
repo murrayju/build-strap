@@ -1,8 +1,9 @@
 // @flow
 import cp from 'child_process';
+import crossSpawn from 'cross-spawn';
 import { buildLog } from './run';
 
-export type SpawnOptions = {|
+export type NativeSpawnOptions = {|
   cwd?: string,
   env?: Object,
   argv0?: string,
@@ -15,17 +16,37 @@ export type SpawnOptions = {|
   windowsHide?: boolean,
 |};
 
-export async function spawn(
+export type SpawnOptions = {|
+  ...NativeSpawnOptions,
+  pipeOutput?: boolean,
+  captureOutput?: boolean,
+  rejectOnErrorCode?: boolean,
+|};
+
+export type SpawnResult = {|
+  output: string,
+  stdout: string,
+  stderr: string,
+  code: number,
+  signal: string,
+|};
+
+export async function spawnAdv(
   command: string,
   args?: string[],
-  options?: ?SpawnOptions,
-  pipeOutput: boolean = false,
-  captureOutput: boolean = false,
-): Promise<string> {
+  opts?: ?SpawnOptions,
+): Promise<SpawnResult> {
+  const {
+    pipeOutput = false,
+    captureOutput = false,
+    rejectOnErrorCode = false,
+    ...options
+  } = opts || {};
+
   return new Promise((resolve, reject) => {
     try {
       const toStr = () => `${command}${args ? ` ${args.join(' ')}` : ''}`;
-      const p = cp.spawn(command, args, {
+      const p = crossSpawn(command, args, {
         ...options,
         // $FlowFixMe
         ...(pipeOutput && !captureOutput && !(options && options.stdio)
@@ -34,13 +55,17 @@ export async function spawn(
       });
 
       let output = '';
+      let stdout = '';
+      let stderr = '';
       if (captureOutput) {
         if (p.stdout) {
           if (pipeOutput) {
             p.stdout.pipe(process.stdout);
           }
           p.stdout.on('data', (d) => {
-            output += d.toString();
+            const str = d.toString();
+            stdout += str;
+            output += str;
           });
         } else {
           buildLog(`Warning: cannot capture stdout for \`${toStr()}\``);
@@ -50,27 +75,38 @@ export async function spawn(
             p.stderr.pipe(process.stderr);
           }
           p.stderr.on('data', (d) => {
-            output += d.toString();
+            const str = d.toString();
+            stderr += str;
+            output += str;
           });
         } else {
           buildLog(`Warning: cannot capture stderr for \`${toStr()}\``);
         }
       }
 
-      p.on('close', (code) => {
-        if (code === 0) {
-          resolve(output);
-        } else {
-          reject(new Error(`${toStr()} => ${code} (error)`));
+      let exitHandled = false;
+      const handleExit = (code, signal) => {
+        if (!exitHandled) {
+          if (rejectOnErrorCode && code) {
+            reject(new Error(`${toStr()} => ${code} (error)`));
+          } else {
+            resolve({
+              output,
+              stdout,
+              stderr,
+              code,
+              signal,
+            });
+          }
+          exitHandled = true;
         }
-      });
+      };
 
-      p.on('exit', (code) => {
-        if (code !== 0) {
-          reject(new Error(`${toStr()} => ${code} (error)`));
-        }
-      });
+      p.on('close', handleExit);
 
+      p.on('exit', handleExit);
+
+      // only fires if we failed to spawn
       p.on('error', (err) => {
         reject(err);
       });
@@ -78,6 +114,17 @@ export async function spawn(
       reject(err);
     }
   });
+}
+
+// older, simpler interface that just returns a string
+export async function spawn(
+  command: string,
+  args?: string[],
+  opts?: ?SpawnOptions,
+): Promise<string> {
+  return spawnAdv(command, args, { rejectOnErrorCode: true, ...opts }).then(
+    (r) => r.output,
+  );
 }
 
 export type ExecOptions = {|

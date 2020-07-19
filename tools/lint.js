@@ -1,3 +1,4 @@
+// @flow
 import { run, buildLog } from '../src/index';
 import eslint from './eslint';
 import flow from './flow';

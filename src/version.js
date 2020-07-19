@@ -1,4 +1,5 @@
 // @flow
+import fs from 'fs-extra';
 import { gitInfo } from './git';
 import { hgInfo } from './hg';
 import { getPkg, getCfg } from './pkg';
@@ -14,9 +15,48 @@ export function getReleaseBranch() {
   return releaseBranch || 'master';
 }
 
-export function getDevBranch() {
-  const { devBranch, repoType } = getCfg();
-  return devBranch || repoType === 'hg' ? 'default' : 'dev';
+export async function getRepoType() {
+  const { repoType } = getCfg();
+
+  return (
+    repoType ||
+    ((await fs.exists('./.hg'))
+      ? 'hg'
+      : (await fs.exists('./.git'))
+      ? 'git'
+      : 'unknown')
+  );
+}
+
+export async function getRepoInfo() {
+  const repoType = await getRepoType();
+  const { branch, revision } =
+    repoType === 'git'
+      ? await gitInfo()
+      : repoType === 'hg'
+      ? await hgInfo()
+      : {};
+  if (!branch || !revision) {
+    throw new Error('Failed to parse branch and revision from source repo.');
+  }
+  return { branch, revision };
+}
+
+export async function getDevBranch() {
+  const { devBranch } = getCfg();
+  return devBranch || (await getRepoType()) === 'hg' ? 'default' : 'dev';
+}
+
+export async function getIsRelease(
+  passedBranch?: ?string = null,
+  releaseOverride?: ?boolean = null,
+) {
+  const branch = passedBranch || (await getRepoInfo()).branch;
+  return releaseOverride != null
+    ? releaseOverride
+    : process.argv.includes('--force-release-version')
+    ? true
+    : branch === getReleaseBranch();
 }
 
 let cacheVersion = true;
@@ -31,33 +71,19 @@ export async function getVersion(
 ) {
   if (!cacheVersion || version == null) {
     const { version: pkgVers, name } = getPkg();
-    const { repoType } = getCfg();
-    const { branch, revision } =
-      repoType === 'git'
-        ? await gitInfo()
-        : repoType === 'hg'
-        ? await hgInfo()
-        : {};
-    if (!branch || !revision) {
-      throw new Error('Failed to parse branch and revision from source repo.');
-    }
+    const { branch, revision } = await getRepoInfo();
     const [, major, minor, patch] =
       pkgVers.match(/^(\d+)\.(\d+)\.(\d+)$/) || [];
     if (!major || !minor || !patch) {
       throw new Error('Invalid version format in package.json');
     }
     const build = getBuild();
-    const isRelease =
-      release != null
-        ? release
-        : process.argv.includes('--force-release-version')
-        ? true
-        : branch === getReleaseBranch();
+    const isRelease = await getIsRelease(branch, release);
     const short = `${major}.${minor}.${patch}`;
     const npm = `${short}${isRelease ? '' : `-${branch}.${build}`}`;
     const info = `${short}${
-      isRelease ? '+' : '-'
-    }${branch}.${build}+${revision}`;
+      isRelease ? `+${build}.` : `-${branch}.${build}+`
+    }${revision}`;
     version = {
       name,
       branch,

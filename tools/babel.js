@@ -1,3 +1,4 @@
+// @flow
 import { makeDir, spawn, buildLog } from '../src/index';
 
 // Transpile js using babel

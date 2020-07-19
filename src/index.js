@@ -1,10 +1,16 @@
 // @flow
+export * from './ant';
 export * from './artifactory';
 export * from './cert';
 export * from './clean';
 export * from './copy';
 export * from './cp';
 export * from './docker';
+export * from './docker.container';
+export * from './docker.network';
+export * from './docker.volume';
+export * from './dockerCleanup';
+export * from './eslint';
 export * from './flow';
 export * from './fs';
 export * from './git';

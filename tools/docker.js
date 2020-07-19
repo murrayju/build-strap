@@ -1,3 +1,4 @@
+// @flow
 import fs from 'fs-extra';
 import {
   buildLog,
@@ -13,7 +14,7 @@ export async function getBuildTag() {
   return `build-${await getUniqueBuildTag()}`;
 }
 
-export async function getBuildImage(tag) {
+export async function getBuildImage(tag?: string) {
   return `${getDockerRepo()}:${tag || (await getBuildTag())}`;
 }
 

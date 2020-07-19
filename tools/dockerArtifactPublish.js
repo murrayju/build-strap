@@ -1,6 +1,6 @@
 // @flow
 import fs from 'fs-extra';
-import { buildLog, dockerRun } from '../src/index';
+import { buildLog, dockerContainerRun } from '../src/index';
 import { getBuildImage, getBuildTag } from './docker';
 
 // Publish build artifacts from within docker container
@@ -20,8 +20,8 @@ export default async function dockerArtifactPublish(
       `Warning: content of latest.build.tag (${tagFromFile}) was not the current expected value (${buildTag}). Using ${tag}.`,
     );
   }
-  await dockerRun(
-    [
+  await dockerContainerRun({
+    runArgs: [
       '--rm',
       ...Object.keys(process.env)
         .filter((k) => envWhitelist.includes(k))
@@ -30,7 +30,7 @@ export default async function dockerArtifactPublish(
           [],
         ),
     ],
-    await getBuildImage(tag),
-    ['publish', '--publish', '--publish-only'],
-  );
+    image: await getBuildImage(tag),
+    cmd: ['publish', '--publish', '--publish-only'],
+  });
 }

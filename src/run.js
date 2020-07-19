@@ -33,14 +33,21 @@ export async function run(fn: RunnableModule, ...options: any[]) {
   return result;
 }
 
-export function runCli(
-  resolveFn: (path: string) => RunnableModule = (path: string) =>
+export type RunCliOptions = {
+  resolveFn?: (path: string) => RunnableModule,
+  defaultAction?: string | RunnableModule,
+  argv?: string[],
+  passthroughArgv?: boolean,
+};
+
+export function runCli({
+  resolveFn = (path: string) =>
     // $FlowFixMe
     require(`./${path}`).default, // eslint-disable-line
-  defaultAction: string | RunnableModule = 'publish',
-  argv: string[] = process.argv,
-  passthroughArgv: boolean = false,
-) {
+  defaultAction = 'publish',
+  argv = process.argv,
+  passthroughArgv = false,
+}: RunCliOptions = {}) {
   const module =
     argv.length > 2
       ? resolveFn(argv[2])
@@ -64,5 +71,18 @@ if (require.main === module) {
   delete require.cache[__filename]; // eslint-disable-line no-underscore-dangle
   runCli();
 }
+
+export function handleEntryPoint(
+  mainModule: typeof module,
+  mainModuleFilename: string,
+  cliOptions?: RunCliOptions,
+) {
+  if (require.main === mainModule) {
+    delete require.cache[mainModuleFilename]; // eslint-disable-line no-underscore-dangle
+    runCli(cliOptions);
+  }
+}
+
+handleEntryPoint(module, __filename);
 
 export default run;

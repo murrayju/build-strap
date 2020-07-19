@@ -2,6 +2,7 @@ import path from 'path';
 
 const paths = {
   root: path.resolve(__dirname, '../'),
+  in: (...args) => path.join(...args),
 };
 
 // paths at the root
@@ -9,7 +10,5 @@ const paths = {
   paths[n] = path.join(paths.root, n);
 });
 paths.distSrc = path.join(paths.dist, 'src');
-
-paths.in = (...args) => path.join(...args);
 
 export default paths;

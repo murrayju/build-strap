@@ -1,9 +1,10 @@
+// @flow
 import { run, yarnInstall, buildLog } from '../src/index';
 import cleanYarn from './cleanYarn';
 
 // Download javascript dependencies (using yarn)
 export default async function yarn(
-  clean = process.argv.includes('--yarn-clean'),
+  clean: boolean = process.argv.includes('--yarn-clean'),
 ) {
   if (process.argv.includes('--yarn-skip')) {
     buildLog('Skipping due to --yarn-skip');

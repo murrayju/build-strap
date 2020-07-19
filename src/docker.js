@@ -2,10 +2,16 @@
 import path from 'path';
 import bytes from 'bytes';
 import isReachable from 'is-reachable';
+import moment from 'moment';
 import { buildLog } from './run';
 import { getCfg, getPkgName, getPkgScope } from './pkg';
 import { spawn } from './cp';
 import { getVersion, getDevBranch } from './version';
+import {
+  dockerContainerRunDaemon,
+  dockerContainerKill,
+} from './docker.container';
+import { dockerNetworkConnect } from './docker.network';
 
 export type DockerConfig = {
   registry?: string,
@@ -16,6 +22,9 @@ export type DockerConfig = {
 export function getDockerConfig(): DockerConfig {
   return getCfg().docker || {};
 }
+
+export const parseDockerDate = (date: string) =>
+  moment(date, 'YYYY-MM-DD HH:mm:ss ZZ').toDate();
 
 export async function dockerBuild(
   tags: string[] = ['latest'],
@@ -37,18 +46,6 @@ export async function dockerBuild(
   ];
 
   return spawn('docker', args, { stdio: 'inherit' });
-}
-
-export async function dockerRun(
-  runArgs: string[] = [],
-  image: string,
-  cmdArgs: string[],
-  pipeOutput: boolean = true,
-  captureOutput: boolean = false,
-) {
-  const args = ['run', ...runArgs, image, ...cmdArgs];
-
-  return spawn('docker', args, { stdio: 'inherit' }, pipeOutput, captureOutput);
 }
 
 export async function dockerTag(
@@ -76,7 +73,7 @@ export async function dockerApplyStandardTags(
       ['latest', major, `${major}.${minor}`, `${major}.${minor}.${patch}`],
       repo,
     );
-  } else if (branch === getDevBranch()) {
+  } else if (branch === (await getDevBranch())) {
     await dockerTag(imageId, ['latest-dev'], repo);
   } else if (branch.match(/^(release|patch)-/)) {
     await dockerTag(imageId, ['latest-rc'], repo);
@@ -100,31 +97,31 @@ export async function dockerImages(
   repo?: ?string = getDockerRepo(),
   filter?: ?DockerImageFilter = null,
 ): Promise<DockerImage[]> {
-  const s = '~|~'; // separator
   return (
     await spawn(
       'docker',
-      [
-        'images',
-        '--format',
-        `{{.Repository}}${s}{{.Tag}}${s}{{.ID}}${s}{{.Digest}}${s}{{.CreatedAt}}${s}{{.Size}}`,
-        ...(repo ? [repo] : []),
-      ],
-      {},
-      false,
-      true,
+      ['images', '--format', `{{json .}}`, ...(repo ? [repo] : [])],
+      { captureOutput: true },
     )
   )
     .split('\n')
+    .filter((line) => !!line.trim())
     .map((l) => {
-      const [repository, tag, id, digest, createdStr, sizeStr] = l.split(s);
+      const {
+        Repository: repository,
+        Tag: tag,
+        ID: id,
+        Digest: digest,
+        CreatedAt,
+        Size,
+      } = JSON.parse(l.trim());
       return {
         repository,
         tag,
         id,
         digest,
-        created: new Date(Date.parse(createdStr)),
-        size: bytes.parse(sizeStr),
+        created: parseDockerDate(CreatedAt),
+        size: bytes.parse(Size),
       };
     })
     .filter(
@@ -197,6 +194,28 @@ export async function dockerPush(
   }, Promise.resolve());
 }
 
+export type DockerPullOptions = {
+  image: string,
+  offline?: boolean,
+  testUrl?: ?string,
+};
+
+export async function dockerPull({
+  image,
+  offline = process.argv.includes('--offline'),
+  testUrl,
+}: DockerPullOptions) {
+  if (offline || !(await isReachable(testUrl || 'https://hub.docker.com'))) {
+    if (offline === false) {
+      throw new Error('Offline, cannot docker pull');
+    }
+    buildLog('It looks like you are offline, skipping docker pull');
+  } else {
+    // throws on failure
+    await spawn('docker', ['pull', image], { stdio: 'inherit' });
+  }
+}
+
 export async function dockerRmi(
   images: string[] = [],
   ignoreErrors: boolean = true,
@@ -205,7 +224,11 @@ export async function dockerRmi(
   await images.reduce(async (prev, image) => {
     await prev;
     await spawn('docker', ['rmi', image], { stdio: 'inherit' }).catch((err) => {
-      if (!ignoreErrors) {
+      if (ignoreErrors) {
+        buildLog(
+          `Warning (ignored Error): Failed to rm image(s): ${err.message}`,
+        );
+      } else {
         throw err;
       }
     });
@@ -224,71 +247,12 @@ export function getDockerRepo() {
   return `${registry ? `${registry}/` : ''}${repository}/${name}`;
 }
 
-export type DockerNetwork = {
-  id: string,
-  name: string,
-  driver: string,
-  scope: string,
-};
-
-export async function dockerNetworks(): Promise<DockerNetwork[]> {
-  return (await spawn('docker', ['network', 'ls'], {}, false, true))
-    .split('\n')
-    .slice(1)
-    .map((l) => {
-      const [id, name, driver, scope] =
-        // $FlowFixMe
-        l.match(/^([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)/)?.slice(1) || [];
-      return { id, name, driver, scope };
-    })
-    .filter((m) => m != null);
-}
-
-export async function dockerNetworkFind(networkName: string) {
-  return (await dockerNetworks()).find(
-    (n) => n.name === networkName || n.id === networkName,
-  );
-}
-
-export async function dockerNetworkCreate(networkName: string) {
-  const existing = await dockerNetworkFind(networkName);
-  if (existing) return existing;
-  await spawn('docker', ['network', 'create', networkName]);
-  return dockerNetworkFind(networkName);
-}
-
-export async function dockerNetworkDelete(networkName: string) {
-  let existing;
-  // eslint-disable-next-line no-cond-assign, no-await-in-loop
-  while ((existing = await dockerNetworkFind(networkName))) {
-    // eslint-disable-next-line no-await-in-loop
-    await spawn('docker', ['network', 'rm', existing.id]);
-  }
-}
-
-export async function dockerNetworkConnect(
-  networkName: string,
-  containerId: string,
-  alias?: ?string,
-) {
-  const net = await dockerNetworkCreate(networkName);
-  if (!net) throw new Error('Failed to create docker network');
-  await spawn('docker', [
-    'network',
-    'connect',
-    ...(alias ? ['--alias', alias] : []),
-    net.id,
-    containerId,
-  ]);
-}
-
 export type PullAndRunContainerOptions = {
+  ...DockerPullOptions,
   runArgs?: string[],
   cmd?: string[],
   network?: ?string,
   alias?: ?string,
-  offline?: boolean,
-  testUrl?: ?string,
 };
 
 export async function dockerPullAndRunContainer(
@@ -305,35 +269,72 @@ export async function dockerPullAndRunContainer(
   } = options;
 
   try {
-    if (offline || !(await isReachable(testUrl || 'https://hub.docker.com'))) {
-      buildLog('It looks like you are offline, skipping docker pull');
-    } else {
-      await spawn('docker', ['pull', image], { stdio: 'inherit' });
-    }
+    await dockerPull({ image, offline, testUrl });
   } catch (err) {
     buildLog(`docker pull failed (${err.message}), attempting to continue...`);
   }
-  const containerId = (
-    await spawn(
-      'docker',
-      ['run', '--rm', '-d', ...runArgs, image, ...cmd],
-      null,
-      false,
-      true,
-    )
-  ).trim();
+  const { id } = await dockerContainerRunDaemon({ image, runArgs, cmd });
   if (network) {
-    await dockerNetworkConnect(network, containerId, alias);
+    await dockerNetworkConnect(network, id, alias);
   }
-  return containerId;
+  return id;
 }
 
-export async function dockerTryStopContainer(id: ?string, name?: string = '') {
-  if (id) {
+export type CopyFilePathConfig = {
+  from: string,
+  to: string,
+};
+
+export type CopyFilesFromDockerImageConfig = {
+  imageId: string,
+  filePaths: CopyFilePathConfig[],
+  ignoreErrors?: ?boolean,
+};
+
+export async function copyFilesFromDockerImage({
+  imageId,
+  filePaths,
+  ignoreErrors,
+}: CopyFilesFromDockerImageConfig): Promise<any> {
+  const container = await dockerContainerRunDaemon({
+    image: imageId,
+    runArgs: ['-it', '--rm', '--entrypoint=/bin/bash'],
+    cmd: ['read', '-p', 'pause'],
+  });
+
+  buildLog(`Copying Files from Docker Image - imageId (${imageId})`);
+
+  const spawnOptions = {
+    stdio: 'inherit',
+    pipeOutput: true,
+    captureOutput: false,
+  };
+  const copyErrors = [];
+
+  try {
+    filePaths.forEach(async (fp) => {
+      // Try to copy from the Debug Folder
+      try {
+        await spawn(
+          'docker',
+          ['cp', `${container.id}:${fp.from}`, fp.to],
+          spawnOptions,
+        );
+        buildLog(`Copied ${fp.from} => ${fp.to}`);
+      } catch (error) {
+        copyErrors.push(error);
+        buildLog(`Error copying file ${fp.from}`);
+      }
+    });
+  } finally {
     try {
-      await spawn('docker', ['stop', id]);
-    } catch (e) {
-      buildLog(`Failed to stop ${name} container: ${e.message}`);
+      await dockerContainerKill(container.id);
+    } catch (error) {
+      copyErrors.push(error);
     }
+  }
+
+  if (copyErrors.length > 0 && ignoreErrors !== true) {
+    throw new Error('Some files failed to copy');
   }
 }

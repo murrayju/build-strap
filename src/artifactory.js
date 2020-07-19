@@ -1,8 +1,10 @@
 // @flow
 import path from 'path';
-import fs from 'fs';
+import fs from 'fs-extra';
 import rp from 'request-promise-native';
+import request from 'request';
 import moment from 'moment';
+import urlJoin from 'url-join';
 import { platform } from 'os';
 import { writeFile } from './fs';
 import { spawn } from './cp';
@@ -26,10 +28,11 @@ export type RemoteArtifactInfo = {
 };
 
 export type ArtifactoryConfig = {
-  root: string,
+  root?: string,
   path?: string,
   'version-folders'?: boolean,
   release?: string,
+  'release-branch'?: string,
   integration?: string,
   'integration-branch-folders'?: boolean,
   'integration-days-to-keep'?: number,
@@ -134,7 +137,7 @@ export async function artifactoryNpm(
   const { root: rt, npm } = artifactoryConfig || getArtifactoryConfig();
   if (!rt || !npm) {
     buildLog(
-      'npm artifactory info missing from package.json, skipping npm publish',
+      'npm artifactoryConfig info missing from package.json, skipping npm publish',
     );
     return false;
   }
@@ -208,7 +211,7 @@ export async function artifactoryStandard(
   const url = await standardUrl(fileName, artifactoryConfig);
   if (!url) {
     buildLog(
-      'release/integration artifactory info missing from package.json, skipping artifactory publish',
+      'release/integration artifactoryConfig info missing from package.json, skipping publish',
     );
     return false;
   }
@@ -458,7 +461,7 @@ export async function getNpmArtifacts(
 ) {
   const { root: rt, npm } = artifactoryConfig || getArtifactoryConfig();
   if (!rt || !npm) {
-    throw new Error('artifactory info missing from package.json');
+    throw new Error('artifactoryConfig info missing from package.json');
   }
   const name = getPkgName(false);
   const scope = getPkgScope();
@@ -489,4 +492,86 @@ export async function getNpmArtifacts(
     if (err.statusCode === 404) return [];
     throw err;
   }
+}
+
+export async function getLatestRepositoryVersion(
+  repositoryPath: string,
+  artifactoryCreds?: ArtifactoryCreds,
+): Promise<string> {
+  const { root: rt } = getArtifactoryConfig();
+  if (!rt) {
+    throw new Error('artifactoryConfig info missing from package.json');
+  }
+  // get latest version number for the key
+  const lastModifiedFileInfo = await artifactoryRequest(
+    {
+      method: 'GET',
+      uri: urlJoin(rt, `/api/storage/${repositoryPath}?lastModified`),
+    },
+    artifactoryCreds,
+  );
+  const { uri } = JSON.parse(lastModifiedFileInfo);
+  const versionStartIndex = uri.indexOf(repositoryPath) + repositoryPath.length;
+  const versionEndIndex = uri.indexOf('/', versionStartIndex + 1);
+  const versionNumber = uri.substring(versionStartIndex + 1, versionEndIndex);
+  return versionNumber;
+}
+
+export async function parseVersionedFilePath(
+  repositoryPath: string,
+  filePath: string,
+  artifactoryCreds?: ArtifactoryCreds,
+): Promise<string> {
+  // eslint-disable-next-line
+  if (filePath.indexOf('{{version}}') > -1) {
+    const version = await getLatestRepositoryVersion(
+      repositoryPath,
+      artifactoryCreds,
+    );
+    return filePath.replace(/{{version}}/g, version);
+  }
+
+  return filePath;
+}
+
+/**
+ * Download a given file from a repository hosted in Artifactory
+ * @param {string} repositoryPath
+ *  The path to the repository root relative to the configured artifactory root
+ * @param {string} filePath
+ *  The path to the file from the repository root. If the latest version of the
+ *  file is desired a tokenized string can be passed using {{version}} to indicate
+ *  segments to replaced by the latest version string.
+ *    ex: {{version}}/path/file-name-${{version}}.js
+ * @param {string} saveAs
+ *  The local file path to save the downloaded file to.
+ * @param {ArtifactoryCreds} artifactoryCreds
+ */
+export async function downloadRepositoryFile(
+  repositoryPath: string,
+  filePath: string,
+  saveAs: string,
+  artifactoryCreds?: ArtifactoryCreds,
+) {
+  const { root: rt } = getArtifactoryConfig();
+  if (!rt) {
+    throw new Error('artifactoryConfig info missing from package.json');
+  }
+  const fileUri = urlJoin(
+    rt,
+    repositoryPath,
+    await parseVersionedFilePath(repositoryPath, filePath, artifactoryCreds),
+  );
+  buildLog(`Downloading file from Artifactory: ${fileUri}`);
+  const fileStream = fs.createWriteStream(saveAs);
+  return new Promise((resolve, reject) => {
+    request(fileUri, (error, response) => {
+      if (error) {
+        buildLog(`Error downloading ${fileUri}: ${JSON.stringify(error)}`);
+        reject(error);
+      } else {
+        resolve(response);
+      }
+    }).pipe(fileStream);
+  });
 }

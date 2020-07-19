@@ -17,6 +17,7 @@
     "creds",
     "flowtype",
     "linebreak",
-    "repo"
+    "repo",
+    "repos"
   ]
 }

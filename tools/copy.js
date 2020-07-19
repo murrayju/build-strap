@@ -1,3 +1,4 @@
+// @flow
 import {
   getPkg,
   getVersion,
@@ -16,7 +17,12 @@ export default async function copy() {
   await makeDir(paths.dist);
   await copySrc(paths.src, paths.distSrc, false);
   const version = await getVersion();
-  const pkg = getPkg();
+  const {
+    name,
+    dependencies = {},
+    peerDependencies = {},
+    engines = {},
+  } = getPkg();
   await Promise.all([
     // Support for flow annotation in published libraries
     copyDir('./src', paths.dist, '**/*.js', null, (n) => `${n}.flow`),
@@ -25,12 +31,12 @@ export default async function copy() {
       paths.in(paths.dist, 'package.json'),
       JSON.stringify(
         {
-          name: pkg.name,
+          name,
           version: version.npm,
           main: `index.js`,
-          dependencies: pkg.dependencies || [],
-          peerDependencies: pkg.peerDependencies || [],
-          engines: pkg.engines || [],
+          dependencies,
+          peerDependencies,
+          engines,
         },
         null,
         2,
