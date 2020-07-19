@@ -1,2 +1,50 @@
 #!/bin/bash
-exec ./bs.sh "$@"
+
+# check for presence of bootstrap scripts
+[ -f './yarn' ] && [ -f './node' ] && [ -f './nodeBootstrap.sh' ] || {
+  # Something is missing, download from github
+  downloadDir=`pwd`/download
+  mkdir -p $downloadDir
+
+  if [ `getconf LONG_BIT` == "64" ]; then
+    arch=64
+  else
+    arch=86
+  fi
+  uname=`uname -s`
+
+  # we need jq to parse the package.json
+  jqCmd=$(which jq 2>/dev/null || echo "$downloadDir/jq")
+  if [ ! -f $jqCmd ]; then
+    if [[ $uname =~ ^Darwin* ]]; then
+      jqName=jq-osx-amd64
+    elif [[ $uname =~ ^Linux* ]]; then
+      jqName=jq-linux$arch
+    else
+      echo Unknown os: $uname
+      exit
+    fi
+    jqDl=https://github.com/stedolan/jq/releases/download/jq-1.6/$jqName
+    echo Downloading $jqDl to $jqCmd
+    curl -L -o $jqCmd $jqDl
+    chmod +x $jqCmd
+  fi
+  cliUrl=$(curl -L https://api.github.com/repos/murrayju/build-strap-cli/releases/latest | $jqCmd -r .tarball_url)
+  cliGz=bs-cli.tar.gz
+  cliDl=$downloadDir/$cliGz
+  if [ ! -f $cliDl ]; then
+    echo Downloading $cliUrl to $cliDl
+    curl -L -o $cliDl $cliUrl
+  fi
+
+  cliDir=$downloadDir/bs-cli
+  if [ ! -d $cliDir ]; then
+    echo Extracting $cliGz
+    tar xzf $cliDl -C $downloadDir
+    mv $downloadDir/murrayju-build-strap-cli* $cliDir
+  fi
+  cp $cliDir/bs* $cliDir/node* $cliDir/yarn* .
+}
+
+./yarn install
+exec ./yarn run run "$@"

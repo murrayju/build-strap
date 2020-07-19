@@ -8,3 +8,7 @@ npm-debug.log
 *.orig
 *.log
 latest.build.*
+node*
+yarn
+yarn.bat
+yarn.ps1
