@@ -1,7 +1,0 @@
-language: bash
-install:
-  - git symbolic-ref --short HEAD || git checkout ${TRAVIS_BRANCH}
-script:
-  - echo "TRAVIS_PULL_REQUEST=${TRAVIS_PULL_REQUEST}"
-  - 'if [ "$TRAVIS_PULL_REQUEST"  = "false" ]; then ./bs publish --buildNum=${TRAVIS_BUILD_NUMBER} --publish; fi'
-  - 'if [ "$TRAVIS_PULL_REQUEST" != "false" ]; then ./bs publish --buildNum=${TRAVIS_BUILD_NUMBER}; fi'

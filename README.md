@@ -3,7 +3,11 @@ A suite of functions to help with writing build scripts using javascript code (w
 
 This project builds itself, so take a look in the `tools/` folder for an example project. Run `./bs` to build.
 
-[![Build Status](https://travis-ci.org/murrayju/build-strap.svg?branch=master)](https://travis-ci.org/murrayju/build-strap)
+[![CI Build](https://github.com/murrayju/build-strap/workflows/CI%20Build/badge.svg?branch=master)](https://github.com/murrayju/build-strap/actions?query=workflow%3A%22CI+Build%22)
+[![version](https://img.shields.io/github/v/tag/murrayju/build-strap.svg?label=version&sort=semver)](https://github.com/murrayju/build-strap/releases/latest)
+[![npm](https://img.shields.io/npm/v/build-strap)](https://npmjs.org/package/build-strap)
+[![dependencies](https://img.shields.io/david/murrayju/build-strap.svg)](https://david-dm.org/murrayju/build-strap)
+[![devDependencies](https://img.shields.io/david/dev/murrayju/build-strap.svg)](https://david-dm.org/murrayju/build-strap?type=dev)
 
 ## Create a "zero dependency" bootstrapped build
 You can set up your project to build with (practically) no pre-requisite dependencies.
