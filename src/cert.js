@@ -7,6 +7,7 @@ import { buildLog } from './run';
 import { readDir } from './fs';
 import { spawn } from './cp';
 import { getCfg } from './pkg';
+import { distDir } from './paths';
 
 export type CertConfig = {
   countryName?: string,
@@ -35,7 +36,7 @@ export function getIpAddresses() {
 
 // Generate a self-signed certificate (if it doesn't exist)
 export async function generateCert(
-  targetDir: string = './build/config',
+  targetDir: string = distDir(),
   force: boolean = process.argv.includes('--force-generateCert'),
 ) {
   if (process.argv.includes('--no-generateCert')) {

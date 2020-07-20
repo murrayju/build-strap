@@ -12,6 +12,7 @@ import { getCfg, getPkgName, getPkgScope } from './pkg';
 import { getVersion, getReleaseBranch } from './version';
 import { buildLog } from './run';
 import type { ArtifactInfo } from './tgz';
+import { distDir as getDistDir } from './paths';
 
 export type ArtifactoryCreds = {
   username: string,
@@ -126,7 +127,7 @@ export async function artifactoryDelete(
 // Invokes `npm publish` on the distDir, using the given credentials and artifactory config
 // artifactory config can be provided as arg, or in the package.json file
 export async function artifactoryNpm(
-  distDir: string,
+  distDir: string = getDistDir(),
   artifactoryConfig?: ArtifactoryConfig,
   artifactoryCreds?: ArtifactoryCreds,
   npmPath?: string,

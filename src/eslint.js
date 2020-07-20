@@ -1,5 +1,6 @@
 // @flow
 import { buildLog } from './run';
+import { srcDir } from './paths';
 
 export type EslintOptions = {
   // Must pass the CLIEngine as imported from 'eslint'
@@ -11,7 +12,7 @@ export type EslintOptions = {
 // Lint the source using eslint
 export const eslint = async ({
   CLIEngine,
-  paths = ['./src/', './tools/'],
+  paths = [srcDir(), './tools/'],
   autoFix = !process.argv.includes('--eslint-no-fix'),
 }: EslintOptions) => {
   const engine = new CLIEngine({ fix: autoFix });

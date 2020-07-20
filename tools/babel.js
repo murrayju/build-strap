@@ -1,5 +1,5 @@
 // @flow
-import { makeDir, spawn, buildLog } from '../src/index';
+import { makeDir, spawn, buildLog, getPaths } from '../src/index';
 
 // Transpile js using babel
 export default async function babel() {
@@ -7,8 +7,9 @@ export default async function babel() {
     buildLog('Skipping due to --no-babel');
     return;
   }
-  await makeDir('./dist');
-  await spawn('babel', ['src', '-d', 'dist'], {
+  const { src, dist } = getPaths();
+  await makeDir(dist);
+  await spawn('babel', [src, '-d', dist], {
     stdio: 'inherit',
     shell: true,
   });

@@ -5,6 +5,7 @@ import { copyFile, makeDir, copyDir, cleanDir } from './fs';
 import { onKillSignal } from './cp';
 import { buildLog } from './run';
 import { dependencies } from './inline-resources';
+import { srcDir, distDir } from './paths';
 
 let timer = null;
 async function throttledCallback(cbFn) {
@@ -21,12 +22,19 @@ async function throttledCallback(cbFn) {
   }, 200);
 }
 
-export async function copySrc(
-  from: string,
-  to: string,
-  watch: boolean = process.argv.includes('--watch'),
-  cbFn?: () => Promise<any>,
-) {
+export type CopySrcOptions = {
+  from?: string,
+  to?: string,
+  watch?: boolean,
+  cbFn?: () => Promise<any> | void,
+};
+
+export async function copySrc({
+  from = srcDir(),
+  to = path.join(distDir(), 'src'),
+  watch = process.argv.includes('--watch'),
+  cbFn,
+}: CopySrcOptions = {}) {
   await copyDir(from, to);
   if (cbFn) await cbFn();
   if (watch) {

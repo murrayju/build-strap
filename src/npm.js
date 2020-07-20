@@ -5,8 +5,9 @@ import fs from 'fs-extra';
 
 import { spawn, exec } from './cp';
 import { getCfg, getPkgName } from './pkg';
-import { getVersion } from './version';
+import { getVersion, getDevBranch } from './version';
 import { buildLog } from './run';
+import { distDir } from './paths';
 
 export type NpmCreds = {
   username: string,
@@ -18,7 +19,7 @@ export type NpmConfig = {
   publish: boolean,
   registry?: string,
   access?: 'public' | 'restricted',
-  'dry-run'?: boolean,
+  dryRun?: boolean,
 };
 
 export function getNpmConfig(): NpmConfig {
@@ -54,20 +55,29 @@ export async function npmGetVersions(
   }
 }
 
-export async function npmPublish(
-  publishPath: string, // distDir, or package.tgz file
+export type NpmPublishOptions = {|
+  publishPath?: string, // distDir, or package.tgz file
   npmConfig?: NpmConfig,
   npmCreds?: NpmCreds,
   npmAuthToken?: string,
   tag?: string,
-  skipExisting: boolean = false,
+  skipExisting?: boolean,
   npmPath?: string, // path to executable
-) {
+|};
+
+export async function npmPublish({
+  publishPath = distDir(),
+  npmConfig,
+  npmCreds,
+  npmAuthToken,
+  tag,
+  skipExisting = false,
+  npmPath,
+}: NpmPublishOptions = {}) {
   const creds = npmCreds || envNpmCreds;
   const authToken = npmAuthToken || process.env.NPM_TOKEN;
   const name = getPkgName();
-  const { publish, registry, access, 'dry-run': dryRun } =
-    npmConfig || getNpmConfig();
+  const { publish, registry, access, dryRun } = npmConfig || getNpmConfig();
   if (!publish) {
     buildLog(
       'npm publish info missing from package.json, skipping npm publish',
@@ -99,7 +109,7 @@ email=${creds.email}`
     );
   }
   const existing = await npmGetVersions(name, npmPath);
-  const { isRelease, npm: npmVersion } = await getVersion();
+  const { isRelease, npm: npmVersion, branch } = await getVersion();
   if (existing.includes(npmVersion)) {
     if (skipExisting) {
       buildLog(
@@ -111,13 +121,14 @@ email=${creds.email}`
       'Failed to publish npm package, this version already exists!',
     );
   }
+  const tagAs =
+    tag || (isRelease ? 'latest' : branch === getDevBranch() ? 'next' : null);
   await spawn(
     npmExe(npmPath),
     [
       'publish',
       resolvedPath,
-      '--tag',
-      tag || (isRelease ? 'latest' : 'next'),
+      ...(tagAs ? ['--tag', tagAs] : []),
       ...(access ? ['--access', access] : []),
       ...(dryRun ? ['--dry-run'] : []),
     ],

@@ -9,14 +9,49 @@ import type { ArtifactoryConfig, ArtifactoryCreds } from './artifactory';
 import { npmPublish } from './npm';
 import type { NpmConfig, NpmCreds } from './npm';
 import { tgzDir } from './tgz';
+import { distDir as getDistDir, outDir as getOutDir } from './paths';
+
+export type CreateArtifactOptions = {
+  distDir?: string, // What to bundle up and publish
+  outDir?: string, // Where the bundled tgz file should go
+  fileName?: string, // (optional) Specify the tgz file name
+};
+
+// create tgz from distDir in outDir
+export async function createArtifact({
+  distDir = getDistDir(),
+  outDir = getOutDir(),
+  fileName,
+}: CreateArtifactOptions) {
+  const version = await getVersion();
+  const name = getPkgName();
+
+  buildLog(`gzipping ${name} v${version.info}...`);
+
+  const tgzFileName = fileName || `${name}-${version.info}.tgz`;
+  const tgzFilePath = path.join(outDir, tgzFileName);
+  const info = await tgzDir(distDir, tgzFilePath, {
+    prefix: 'package',
+  });
+
+  buildLog(`md5: ${info.md5}`);
+  buildLog(`sha1: ${info.sha1}`);
+  buildLog(`sha512: ${info.sha512}`);
+  buildLog(`size: ${info.size} bytes`);
+
+  return {
+    name,
+    version,
+    info,
+    fileName: tgzFileName,
+    filePath: tgzFilePath,
+  };
+}
 
 export type PublishConfiguration = {
-  distDir: string, // What to bundle up and publish
-  outDir: string, // Where the bundled tgz file should go
+  ...CreateArtifactOptions,
   doPublish: boolean, // Actually publish?
-
   prePublishFn?: () => any, // (optional) Callback to invoke before publishing
-  fileName?: string, // (optional) Specify the tgz file name
   artifactoryConfig?: ArtifactoryConfig, // (optional) Artifactory config info (normally in package.json)
   artifactoryCreds?: ArtifactoryCreds, // (optional) Artifactory credentials (normally from ENV var)
   npmPath?: string, // (optional) Path to npm executable
@@ -30,8 +65,8 @@ export type PublishConfiguration = {
 // tgz the distDir, and copy it to the outDir
 // if toArtifactory is true, also publishes to artifactory
 export async function publish({
-  distDir,
-  outDir,
+  distDir = getDistDir(),
+  outDir = getOutDir(),
   doPublish,
   prePublishFn,
   fileName,
@@ -50,21 +85,11 @@ export async function publish({
     });
   }
 
-  const version = await getVersion();
-  const name = getPkgName();
-
-  buildLog(`gzipping ${name} v${version.info}...`);
-
-  const tgzFileName = fileName || `${name}-${version.info}.tgz`;
-  const tgzFilePath = path.join(outDir, tgzFileName);
-  const artifactInfo = await tgzDir(distDir, tgzFilePath, {
-    prefix: 'package',
-  });
-
-  buildLog(`md5: ${artifactInfo.md5}`);
-  buildLog(`sha1: ${artifactInfo.sha1}`);
-  buildLog(`sha512: ${artifactInfo.sha512}`);
-  buildLog(`size: ${artifactInfo.size} bytes`);
+  const {
+    info,
+    filePath: tgzFilePath,
+    fileName: tgzFileName,
+  } = await createArtifact({ distDir, outDir, fileName });
 
   if (!doPublish) {
     buildLog(
@@ -80,18 +105,18 @@ export async function publish({
   );
   const artifact = fs.createReadStream(tgzFilePath);
   await Promise.all([
-    npmPublish(
-      tgzFilePath,
+    npmPublish({
+      publishPath: tgzFilePath,
       npmConfig,
       npmCreds,
       npmAuthToken,
-      npmTag,
-      npmSkipExisting,
+      tag: npmTag,
+      skipExisting: npmSkipExisting,
       npmPath,
-    ),
+    }),
     artifactoryStandard(
       artifact,
-      artifactInfo,
+      info,
       tgzFileName,
       artifactoryConfig,
       artifactoryCreds,

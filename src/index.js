@@ -17,6 +17,7 @@ export * from './git';
 export * from './hg';
 export * from './inline-resources';
 export * from './npm';
+export * from './paths';
 export * from './pkg';
 export * from './publish';
 export * from './run';
