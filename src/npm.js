@@ -121,14 +121,18 @@ email=${creds.email}`
       'Failed to publish npm package, this version already exists!',
     );
   }
-  const tagAs =
-    tag || (isRelease ? 'latest' : branch === getDevBranch() ? 'next' : null);
   await spawn(
     npmExe(npmPath),
     [
       'publish',
       resolvedPath,
-      ...(tagAs ? ['--tag', tagAs] : []),
+      '--tag',
+      tag ||
+        (isRelease
+          ? 'latest'
+          : branch === (await getDevBranch())
+          ? 'next'
+          : 'branch'),
       ...(access ? ['--access', access] : []),
       ...(dryRun ? ['--dry-run'] : []),
     ],
