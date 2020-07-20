@@ -128,7 +128,11 @@ email=${creds.email}`
       resolvedPath,
       '--tag',
       tag ||
-        (isRelease ? 'latest' : branch === getDevBranch() ? 'next' : 'branch'),
+        (isRelease
+          ? 'latest'
+          : branch === (await getDevBranch())
+          ? 'next'
+          : 'branch'),
       ...(access ? ['--access', access] : []),
       ...(dryRun ? ['--dry-run'] : []),
     ],
