@@ -7,14 +7,14 @@ import {
   getUniqueBuildTag,
   getDockerId,
   dockerBuild,
-  dockerApplyStandardTags,
+  dockerTagVersion,
 } from '../src/index';
 
-export async function getBuildTag() {
+export async function getBuildTag(): Promise<string> {
   return `build-${await getUniqueBuildTag()}`;
 }
 
-export async function getBuildImage(tag?: string) {
+export async function getBuildImage(tag?: string): Promise<string> {
   return `${getDockerRepo()}:${tag || (await getBuildTag())}`;
 }
 
@@ -38,7 +38,7 @@ export default async function docker() {
   await dockerBuild(['latest-build', buildTag], [`BUILD_NUMBER=${build}`]);
   const buildId = await getDockerId(buildTag);
   await fs.writeFile('./latest.build.id', buildId);
-  await dockerApplyStandardTags(buildId);
+  await dockerTagVersion(buildId);
 
   buildLog(`Successfully built docker image: ${buildId}`);
 }

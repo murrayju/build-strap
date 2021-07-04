@@ -1,5 +1,3 @@
-// @flow
-import path from 'path';
 import {
   getPkg,
   getVersion,
@@ -8,16 +6,15 @@ import {
   makeDir,
   copySrc,
   copyDir,
-  getPaths,
 } from '../src/index';
+import paths from './paths';
 
 /**
  * Copies everything to the dist folder that we want to publish
  */
 export default async function copy() {
-  const { dist } = getPaths();
-  await makeDir(dist);
-  await copySrc();
+  await makeDir(paths.dist);
+  await copySrc({ from: paths.src, to: paths.distSrc, watch: false });
   const version = await getVersion();
   const {
     name,
@@ -27,10 +24,10 @@ export default async function copy() {
   } = getPkg();
   await Promise.all([
     // Support for flow annotation in published libraries
-    copyDir('./src', dist, '**/*.js', null, (n) => `${n}.flow`),
-    copyDir('./src', dist, '**/!(*.js)'),
+    copyDir('./src', paths.dist, '**/*.js', null, (n) => `${n}.flow`),
+    copyDir('./src', paths.dist, '**/!(*.js)'),
     writeFile(
-      path.join(dist, 'package.json'),
+      paths.in(paths.dist, 'package.json'),
       JSON.stringify(
         {
           name,
@@ -45,7 +42,9 @@ export default async function copy() {
       ),
     ),
     Promise.all(
-      ['LICENSE', 'README.md'].map((f) => copyFile(f, path.join(dist, f))),
+      ['LICENSE', 'README.md'].map((f) =>
+        copyFile(f, paths.in(paths.dist, f)),
+      ),
     ),
   ]);
 }

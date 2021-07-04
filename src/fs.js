@@ -1,36 +1,51 @@
 // @flow
 import fs from 'fs-extra';
 import path from 'path';
-import glob from 'glob';
+import glob, { type Options as GlobOptions } from 'glob';
 import rimraf from 'rimraf';
 
 export const readFile = async (
   file: string,
-  options: string | Object = 'utf8',
-) => fs.readFile(file, options);
+  options:
+    | string
+    | {
+        encoding: string,
+        flag?: string,
+        ...
+      } = 'utf8',
+): Promise<string> => fs.readFile(file, options);
 
 export const writeFile = async (
   file: string,
   data: string | Buffer,
   options?: string | Object,
-) => fs.writeFile(file, data, options);
+): Promise<void> => fs.writeFile(file, data, options);
 
-export const renameFile = async (source: string, target: string) =>
-  fs.rename(source, target);
+export const renameFile = async (
+  source: string,
+  target: string,
+): Promise<void> => fs.rename(source, target);
 
-export const copyFile = async (source: string, target: string) =>
+export const copyFile = async (source: string, target: string): Promise<void> =>
   fs.copyFile(source, target);
 
-export const readDir = async (pattern: string, options?: Object) =>
+export const readDir = async (
+  pattern: string,
+  options?: Object,
+): Promise<string[]> =>
   new Promise((resolve, reject) =>
-    glob(pattern, options, (err, result) =>
+    glob(pattern, options || {}, (err, result) =>
       err ? reject(err) : resolve(result),
     ),
   );
 
-export const makeDir = async (name: string) => fs.ensureDir(name);
+export const makeDir = async (name: string): Promise<void> =>
+  fs.ensureDir(name);
 
-export const moveDir = async (source: string, target: string) => {
+export const moveDir = async (
+  source: string,
+  target: string,
+): Promise<void> => {
   const dirs = await readDir('**/*.*', {
     cwd: source,
     nosort: true,
@@ -52,7 +67,7 @@ export const copyDir = async (
   fileGlob: string = '**/*.*',
   globOptions?: ?Object = null,
   renameFn: (name: string) => string = (n) => n,
-) => {
+): Promise<void> => {
   const paths = await readDir(fileGlob, {
     cwd: source,
     nosort: true,
@@ -70,9 +85,12 @@ export const copyDir = async (
   );
 };
 
-export const cleanDir = async (pattern: string, options?: Object) =>
+export const cleanDir = async (
+  pattern: string,
+  globOptions?: GlobOptions | boolean,
+): Promise<void> =>
   new Promise((resolve, reject) =>
-    rimraf(pattern, { glob: options }, (err, result) =>
-      err ? reject(err) : resolve(result),
+    rimraf(pattern, { glob: globOptions }, (err) =>
+      err ? reject(err) : resolve(),
     ),
   );

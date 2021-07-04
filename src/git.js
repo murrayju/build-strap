@@ -17,8 +17,13 @@ export async function gitRevId(): Promise<string> {
     .trim();
 }
 
+type GitInfo = {
+  branch: string,
+  revision: string,
+};
+
 let info = null;
-export async function gitInfo(noCache: boolean = false) {
+export async function gitInfo(noCache: boolean = false): Promise<GitInfo> {
   if (!info || noCache) {
     info = {
       branch: await gitBranch(),

@@ -1,12 +1,12 @@
-import path from 'path';
 import pkg from '../package.json';
-import { run, handleEntryPoint, setPkg, setRoot } from '../src/index';
+import { run, runCli, setPkg } from '../src/index';
 
-setRoot(path.resolve(__dirname, '../'));
 setPkg(pkg);
-handleEntryPoint(module, __filename, {
-  // eslint-disable-next-line import/no-dynamic-require,global-require
-  resolveFn: (p) => require(`./${p}`).default,
-});
+
+if (require.main === module) {
+  delete require.cache[__filename]; // eslint-disable-line no-underscore-dangle
+  // eslint-disable-next-line global-require, import/no-dynamic-require
+  runCli({ resolveFn: (path) => require(`./${path}`).default });
+}
 
 export default run;

@@ -9,16 +9,11 @@
 [include]
 
 [untyped]
-.*/node_modules/.*
 
 [libs]
 
 [lints]
 
 [options]
-esproposal.optional_chaining=enable
-esproposal.nullish_coalescing=enable
-esproposal.decorators=ignore
-experimental.const_params=true
 
 [version]

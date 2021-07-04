@@ -1,5 +1,6 @@
 // @flow
 import bytes from 'bytes';
+import throttle from 'lodash/throttle';
 import { buildLog } from './run';
 import { spawn } from './cp';
 import type { SpawnOptions } from './cp';
@@ -25,11 +26,14 @@ export type DockerContainer = {|
   status: string,
   exited: boolean,
   inspect: () => Promise<DockerContainerInspectOutput>,
+  exists: () => Promise<boolean>,
+  isRunning: () => Promise<boolean>,
   start: () => Promise<void>,
   stop: (ignoreError?: boolean) => Promise<void>,
   kill: (ignoreError?: boolean) => Promise<void>,
   restart: () => Promise<void>,
   rm: (ignoreError?: boolean) => Promise<void>,
+  teardown: (verbose?: boolean) => Promise<void>,
 |};
 
 type DockerContainerLsOptions = {
@@ -37,7 +41,9 @@ type DockerContainerLsOptions = {
   filter?: (container: DockerContainer) => boolean,
 };
 
-export async function dockerContainerLs({
+// calling this function in rapid succession can lead to errors.
+// prefer throttled version
+export async function _dockerContainerLs({
   all,
   filter,
 }: DockerContainerLsOptions = {}): Promise<DockerContainer[]> {
@@ -99,6 +105,23 @@ export async function dockerContainerLs({
         }),
         exited: /^Exited/.test(status),
         inspect: async () => (await dockerContainerInspect(id))[0],
+        async exists(): Promise<boolean> {
+          try {
+            return !!(await this.inspect());
+          } catch {
+            return false;
+          }
+        },
+        async isRunning(): Promise<boolean> {
+          try {
+            const {
+              State: { Running: running },
+            } = await this.inspect();
+            return running;
+          } catch {
+            return false;
+          }
+        },
         start: async () => dockerContainerStart(id),
         stop: async (ignoreError?: boolean = true) =>
           dockerContainerStop(id, ignoreError),
@@ -107,15 +130,47 @@ export async function dockerContainerLs({
         restart: async () => dockerContainerRestart(id),
         rm: async (ignoreError?: boolean = true) =>
           dockerContainerRm(id, ignoreError),
+        async teardown(verbose?: boolean = true) {
+          const log = (msg) => verbose && buildLog(msg);
+          if (await this.isRunning()) {
+            try {
+              log(`Stopping container: <${this.name}>...`);
+              await this.stop(false);
+              log(`<${this.name}> container stopped.`);
+            } catch (e1) {
+              log(`Failed to stop <${this.name}> container: ${e1.message}`);
+              try {
+                log(`Killing container: <${this.name}>...`);
+                await this.kill(false);
+                log(`<${this.name}> container killed.`);
+              } catch (e2) {
+                log(`Failed to kill <${this.name}> container: ${e2.message}`);
+              }
+            }
+          } else {
+            log(`<${this.name}> container not running, skipping stop.`);
+          }
+          if (await this.exists()) {
+            await this.rm(true);
+          } else {
+            log(`<${this.name}> container does not exist, skipping rm.`);
+          }
+        },
       };
     })
     .filter((c) => c.id && (typeof filter === 'function' ? filter(c) : true));
 }
 
+export const dockerContainerLs: (
+  DockerContainerLsOptions | void,
+) => Promise<DockerContainer[]> = throttle(_dockerContainerLs, 500, {
+  trailing: false,
+});
+
 export async function dockerContainerFind(
   search: string,
   options?: DockerContainerLsOptions,
-) {
+): Promise<?DockerContainer> {
   return (
     (await dockerContainerLs(options)).find(
       (c) =>
@@ -192,27 +247,39 @@ export async function dockerContainerStart(id: string | string[]) {
   await spawn('docker', ['container', 'start', ...ids]);
 }
 
-export async function dockerContainerInspect(
+export async function _dockerContainerInspect(
   id: string | string[],
 ): Promise<DockerContainerInspectOutput[]> {
   const ids = Array.isArray(id) ? id : [id];
   return (
-    JSON.parse(
-      (
-        await spawn(
-          'docker',
-          ['container', 'inspect', '--format', '{{json .}}', ...ids],
-          { captureOutput: true },
-        )
-      ).trim(),
-    ) || []
+    (
+      await spawn(
+        'docker',
+        ['container', 'inspect', '--format', '{{json .}}', ...ids],
+        { captureOutput: true },
+      )
+    )
+      .split('\n')
+      .filter((line) => !!line.trim())
+      .map((line) => JSON.parse(line.trim())) || []
   );
 }
+export const dockerContainerInspect: (
+  string | string[],
+) => Promise<DockerContainerInspectOutput[]> = throttle(
+  _dockerContainerInspect,
+  500,
+  {
+    trailing: false,
+  },
+);
 
 type DockerContainerRunDaemonArgs = {|
   image: string,
   runArgs?: string[],
   cmd?: string[],
+  waitAttempts?: number,
+  waitDuration?: number,
 |};
 
 type DockerContainerRunArgs = {|
@@ -225,7 +292,7 @@ export async function dockerContainerRun({
   runArgs = [],
   cmd = [],
   spawnOptions,
-}: DockerContainerRunArgs) {
+}: DockerContainerRunArgs): Promise<string> {
   return spawn('docker', ['container', 'run', ...runArgs, image, ...cmd], {
     stdio: 'inherit',
     pipeOutput: true,
@@ -237,6 +304,8 @@ export async function dockerContainerRunDaemon({
   image,
   runArgs = [],
   cmd = [],
+  waitAttempts = 10,
+  waitDuration = 501,
 }: DockerContainerRunDaemonArgs): Promise<DockerContainer> {
   const id = (
     await dockerContainerRun({
@@ -250,9 +319,71 @@ export async function dockerContainerRunDaemon({
       },
     })
   ).trim();
-  const container = await dockerContainerFind(id);
+  let container = await dockerContainerFind(id);
+  let attempts = 0;
+
+  // containers don't always show up in the list right away
+  /* eslint-disable no-await-in-loop */
+  while (!container && attempts < waitAttempts) {
+    await new Promise((resolve) => setTimeout(resolve, waitDuration));
+    container = await dockerContainerFind(id);
+    attempts += 1;
+  }
+  /* eslint-enable no-await-in-loop */
+
   if (!container) {
     throw new Error(`Failed to find newly created container: ${id}`);
   }
   return container;
 }
+
+const indicators = ['.', ':', '*', '+', '-', '=', '%', '$', '@', '^', '&'];
+let curIndicator = 0;
+
+/**
+ * Waits for the given container to be fully started. Checks that the container is
+ * running, and test with the provided testFn every second until it returns true.
+ * @param {DockerContainer} container The container to test
+ * @param {Function} testFn A function that validates that the container is ready (e.g. by calling an API on the container)
+ * @param {number} timeoutMs The amount of time to wait between attempts.
+ * @param {number} maxAttempts The maximum number of attempts before giving up (rejects promise)
+ */
+export const dockerContainerWaitForStart = async (
+  container: DockerContainer,
+  testFn: (DockerContainer) => Promise<boolean>,
+  timeoutMs?: number = 1000,
+  maxAttempts?: number = 1200,
+) => {
+  // claim an indicator
+  const indicator = indicators[curIndicator] || '.';
+  curIndicator = (curIndicator + 1) % indicators.length;
+
+  const { name } = container;
+  buildLog(`Waiting for ${name} to fully start... ${indicator}`);
+  await new Promise((resolve, reject) => {
+    const check = (tries = 0) => {
+      process.stdout.write(indicator);
+      setTimeout(async () => {
+        try {
+          if (!(await container.isRunning())) {
+            return reject(
+              new Error(`The '${name}' container is no longer running.`),
+            );
+          }
+          if (await testFn(container)) {
+            return resolve();
+          }
+        } catch (err) {
+          // ignore
+        }
+        return tries < maxAttempts
+          ? check(tries + 1)
+          : reject(
+              new Error(`Timeout waiting for '${name}' container to start.`),
+            );
+      }, timeoutMs);
+    };
+    check();
+  });
+  process.stdout.write('\n');
+};

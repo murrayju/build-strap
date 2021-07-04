@@ -4,10 +4,13 @@ import path from 'path';
 import fs from 'fs';
 import { readFile, writeFile } from './fs';
 
+type DependencyMap = {
+  [string]: string[],
+};
 // So we know to copy extra files when a dependency is modified
-export const dependencies = {};
+export const dependencies: DependencyMap = {};
 
-function recordDependency(parent, child) {
+function recordDependency(parent, child): void {
   dependencies[child] = dependencies[child] || [];
   if (!dependencies[child].includes(parent)) {
     dependencies[child].push(parent);
@@ -18,7 +21,7 @@ function recordDependency(parent, child) {
  * Inline resources in a tsc/ngc compilation.
  * @param projectPath {string} Path to the project.
  */
-export async function inlineResources(projectPath: string) {
+export async function inlineResources(projectPath: string): Promise<void> {
   // Match only TypeScript files in projectPath.
   const files = glob.sync('**/*.ts', { cwd: projectPath });
 
@@ -38,7 +41,7 @@ export async function inlineResources(projectPath: string) {
   );
 }
 
-export function requireResourcesLoader(content: string) {
+export function requireResourcesLoader(content: string): string {
   return [requireTemplate, requireStyle, removeModuleId].reduce(
     (c, fn) => fn(c, '!raw-loader!'),
     content,
@@ -46,7 +49,7 @@ export function requireResourcesLoader(content: string) {
 }
 
 // This is a webpack loader
-export function webpackInlineResourceLoader(content: string) {
+export function webpackInlineResourceLoader(content: string): string {
   this.cacheable(true);
   const dir = this.context;
   const that = this;
@@ -70,7 +73,7 @@ export type UrlResolver = (url: string) => string;
 export function inlineResourcesFromString(
   content: string,
   urlResolver: UrlResolver,
-) {
+): string {
   // Curry through the inlining functions.
   return [inlineTemplate, inlineStyle, removeModuleId].reduce(
     (c, fn) => fn(c, urlResolver),
@@ -93,7 +96,7 @@ function processTemplate(content: string, cbFn: UrlResolver) {
  * @param urlResolver {Function} A resolver that takes a URL and return a path.
  * @return {string} The content with all templates inlined.
  */
-function inlineTemplate(content: string, urlResolver: UrlResolver) {
+function inlineTemplate(content: string, urlResolver: UrlResolver): string {
   return processTemplate(
     content,
     (templateUrl) =>
@@ -103,12 +106,12 @@ function inlineTemplate(content: string, urlResolver: UrlResolver) {
   );
 }
 
-function requireTemplate(content: string, loader: string = '') {
+function requireTemplate(content: string, loader: string = ''): string {
   return processTemplate(content, (url) => `require('${loader}${url}')`);
 }
 
 // The cbFn is given the url of a single css file, and should return the string to replace it
-function processStyle(content: string, cbFn: UrlResolver) {
+function processStyle(content: string, cbFn: UrlResolver): string {
   return content.replace(
     /styleUrls:\s*(\[[\s\S]*?\])/gm,
     (m, styleUrls) =>
@@ -126,7 +129,7 @@ function processStyle(content: string, cbFn: UrlResolver) {
  * @param content {string} The source file's content.
  * @return {string} The content with all styles inlined.
  */
-function inlineStyle(content: string, urlResolver: UrlResolver) {
+function inlineStyle(content: string, urlResolver: UrlResolver): string {
   return processStyle(
     content,
     (styleUrl) =>
@@ -136,7 +139,7 @@ function inlineStyle(content: string, urlResolver: UrlResolver) {
   );
 }
 
-function requireStyle(content: string, loader: string = '') {
+function requireStyle(content: string, loader: string = ''): string {
   return processStyle(content, (url) => `require('${loader}${url}')`);
 }
 
@@ -145,7 +148,10 @@ function requireStyle(content: string, loader: string = '') {
  * @param content {string} The source file's content.
  * @returns {string} The content with all moduleId: mentions removed.
  */
-// eslint-disable-next-line no-unused-vars
-function removeModuleId(content: string, urlResolver?: UrlResolver | string) {
+function removeModuleId(
+  content: string,
+  // eslint-disable-next-line no-unused-vars
+  urlResolver?: UrlResolver | string,
+): string {
   return content.replace(/\s*moduleId:\s*module\.id\s*,?\s*/gm, '');
 }

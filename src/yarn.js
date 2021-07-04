@@ -118,7 +118,6 @@ export async function yarnUpgrade(opts?: YarnUpgradeOptions) {
         buildLog('No eligible outdated packages');
       }
     }
-  } else {
-    await yarn({ args: ['upgrade'] });
   }
+  await yarn({ args: ['upgrade'] });
 }

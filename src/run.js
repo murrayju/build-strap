@@ -1,5 +1,5 @@
 // @flow
-export function format(time?: Date = new Date()) {
+export function format(time?: Date = new Date()): string {
   return time.toTimeString().replace(/.*(\d{2}:\d{2}:\d{2}).*/, '$1');
 }
 
@@ -12,9 +12,14 @@ export function buildLog(msg: string, time?: Date) {
   console.info(`[${format(time || new Date())}] ${msg}`);
 }
 
-export type RunnableModule = (() => any) | { default: () => any };
+export type RunnableModule<T> =
+  | (() => Promise<T>)
+  | { default: () => Promise<T> };
 
-export async function run(fn: RunnableModule, ...options: any[]) {
+export async function run<T>(
+  fn: RunnableModule<T>,
+  ...options: any[]
+): Promise<T> {
   if (fn == null) {
     throw new Error(`Invalid argument passed to run(${fn})`);
   }
@@ -33,21 +38,21 @@ export async function run(fn: RunnableModule, ...options: any[]) {
   return result;
 }
 
-export type RunCliOptions = {
-  resolveFn?: (path: string) => RunnableModule,
-  defaultAction?: string | RunnableModule,
+export type RunCliOptions<T> = {
+  resolveFn?: (path: string) => RunnableModule<T>,
+  defaultAction?: string | RunnableModule<T>,
   argv?: string[],
   passthroughArgv?: boolean,
 };
 
-export function runCli({
+export async function runCli<T>({
   resolveFn = (path: string) =>
     // $FlowFixMe
     require(`./${path}`).default, // eslint-disable-line
   defaultAction = 'publish',
   argv = process.argv,
   passthroughArgv = false,
-}: RunCliOptions = {}) {
+}: RunCliOptions<T> = {}): Promise<T> {
   const module =
     argv.length > 2
       ? resolveFn(argv[2])
@@ -64,18 +69,14 @@ export function runCli({
   return run(module, ...args).catch((err) => {
     console.error((err && err.stack) || err);
     process.exit(1);
+    throw err;
   });
 }
 
-if (require.main === module) {
-  delete require.cache[__filename]; // eslint-disable-line no-underscore-dangle
-  runCli();
-}
-
-export function handleEntryPoint(
+export function handleEntryPoint<T>(
   mainModule: typeof module,
   mainModuleFilename: string,
-  cliOptions?: RunCliOptions,
+  cliOptions?: RunCliOptions<T>,
 ) {
   if (require.main === mainModule) {
     delete require.cache[mainModuleFilename]; // eslint-disable-line no-underscore-dangle
