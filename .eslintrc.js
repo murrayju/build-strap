@@ -3,13 +3,7 @@ module.exports = {
 
   plugins: ['flowtype', 'prettier', 'babel'],
 
-  extends: [
-    'airbnb-base',
-    'plugin:flowtype/recommended',
-    'plugin:prettier/recommended',
-    'prettier',
-    'prettier/flowtype',
-  ],
+  extends: ['airbnb-base', 'plugin:flowtype/recommended', 'prettier'],
 
   parserOptions: {
     sourceType: 'module',

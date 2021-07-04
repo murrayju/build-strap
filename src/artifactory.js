@@ -11,8 +11,7 @@ import { spawn } from './cp';
 import { getCfg, getPkgName, getPkgScope } from './pkg';
 import { getVersion, getReleaseBranch } from './version';
 import { buildLog } from './run';
-import type { ArtifactInfo } from './tgz';
-import { distDir as getDistDir } from './paths';
+import { type ArtifactInfo } from './tgz';
 
 export type ArtifactoryCreds = {
   username: string,
@@ -57,7 +56,7 @@ const envArtifactoryCreds: ArtifactoryCreds = (process.env.ARTIFACTORY_CREDS &&
 export async function artifactoryRequest(
   requestOptions: any,
   artifactoryCreds?: ArtifactoryCreds,
-) {
+): Promise<any> {
   const creds = artifactoryCreds || envArtifactoryCreds;
   return rp(requestOptions).auth(creds.username, creds.password);
 }
@@ -69,7 +68,7 @@ export async function artifactoryPut(
   url: string | string[],
   artifactInfo: ArtifactInfo,
   artifactoryCreds?: ArtifactoryCreds,
-) {
+): Promise<string[]> {
   const stream: stream$Readable =
     typeof artifact === 'string' ? fs.createReadStream(artifact) : artifact;
   const urls = typeof url === 'string' ? [url] : url;
@@ -101,14 +100,14 @@ export async function artifactoryDelete(
   url: string | string[],
   artifactoryCreds?: ArtifactoryCreds,
   dryRun: boolean = process.argv.includes('--dry-run'),
-) {
+): Promise<?($SettledPromiseResult<string>[])> {
   const urls = typeof url === 'string' ? [url] : url;
   if (dryRun) {
     buildLog('Skipping delete due to --dry-run');
     return null;
   }
 
-  return Promise.all(
+  return Promise.allSettled(
     urls.map((uri) =>
       artifactoryRequest(
         {
@@ -116,10 +115,16 @@ export async function artifactoryDelete(
           uri,
         },
         artifactoryCreds,
-      ).then(() => {
-        buildLog(`Successful DELETE of ${uri}`);
-        return uri;
-      }),
+      ).then(
+        () => {
+          buildLog(`Successful DELETE of ${uri}`);
+          return uri;
+        },
+        (err) => {
+          buildLog(`Failed to DELETE ${uri}`);
+          throw err;
+        },
+      ),
     ),
   );
 }
@@ -127,13 +132,13 @@ export async function artifactoryDelete(
 // Invokes `npm publish` on the distDir, using the given credentials and artifactory config
 // artifactory config can be provided as arg, or in the package.json file
 export async function artifactoryNpm(
-  distDir: string = getDistDir(),
+  distDir: string,
   artifactoryConfig?: ArtifactoryConfig,
   artifactoryCreds?: ArtifactoryCreds,
   npmPath?: string,
   tag?: string,
   skipExisting: boolean = false,
-) {
+): Promise<boolean> {
   const creds = artifactoryCreds || envArtifactoryCreds;
   const { root: rt, npm } = artifactoryConfig || getArtifactoryConfig();
   if (!rt || !npm) {
@@ -208,7 +213,7 @@ export async function artifactoryStandard(
   fileName: string,
   artifactoryConfig?: ArtifactoryConfig,
   artifactoryCreds?: ArtifactoryCreds,
-) {
+): Promise<boolean> {
   const url = await standardUrl(fileName, artifactoryConfig);
   if (!url) {
     buildLog(
@@ -253,15 +258,27 @@ const getRemoteArtifactChildrenInfo = async (
     ),
   );
 
-async function cleanChildren(
+type CleanChildrenOptions = {|
   rootUri: string,
   repo: string,
   subPath: string,
-  daysToKeep: number = 14,
-  maxToKeep: number = 10,
+  daysToKeep?: number,
+  maxToKeep?: number,
   keepFilter?: ?(child: RemoteArtifactInfo) => boolean,
   artifactoryCreds?: ArtifactoryCreds,
-) {
+  ignoreErrors?: boolean,
+|};
+
+async function cleanChildren({
+  rootUri,
+  repo,
+  subPath,
+  daysToKeep = 14,
+  maxToKeep = 10,
+  keepFilter,
+  artifactoryCreds,
+  ignoreErrors = true,
+}: CleanChildrenOptions = {}) {
   const info = await getRemoteArtifactInfo(
     rootUri,
     repo,
@@ -306,20 +323,26 @@ async function cleanChildren(
     : filtered;
 
   // Delete any integration artifacts that didn't make the limited list
-  return Promise.all(
+  const results = await Promise.allSettled(
     integrationChildren
       .filter((c) => limited.indexOf(c) < 0)
       .map(async (c) => {
         buildLog(`Deleting artifact: ${c.repo}${c.path}`);
-        await artifactoryDelete(
+        return artifactoryDelete(
           `${rootUri}/${c.repo}/${c.path}`,
           artifactoryCreds,
         );
       }),
   );
+
+  if (!ignoreErrors && results.some((r) => r.status === 'rejected')) {
+    throw new Error('Some artifacts were not deleted.');
+  }
+
+  return results;
 }
 
-async function cleanBranchFolders(
+type CleanBranchFoldersOptions = {
   rootUri: string,
   repo: string,
   subPath: string,
@@ -327,7 +350,19 @@ async function cleanBranchFolders(
   maxToKeep?: number,
   keepFilter?: ?(child: RemoteArtifactInfo) => boolean,
   artifactoryCreds?: ArtifactoryCreds,
-) {
+  ignoreErrors?: boolean,
+};
+
+async function cleanBranchFolders({
+  rootUri,
+  repo,
+  subPath,
+  daysToKeep,
+  maxToKeep,
+  keepFilter,
+  artifactoryCreds,
+  ignoreErrors = true,
+}: CleanBranchFoldersOptions = {}) {
   const info = await getRemoteArtifactInfo(
     rootUri,
     repo,
@@ -341,7 +376,7 @@ async function cleanBranchFolders(
     subPath,
     artifactoryCreds,
   );
-  await Promise.all(
+  const results = await Promise.allSettled(
     children.map(async (c) => {
       const [branch] = c.path.split('/').slice(-1);
       if (branch === getReleaseBranch()) {
@@ -351,15 +386,15 @@ async function cleanBranchFolders(
         return;
       }
       buildLog(`Cleaning integration branch: ${repo}/${subPath}/${branch}`);
-      await cleanChildren(
+      await cleanChildren({
         rootUri,
-        c.repo,
-        c.path,
+        repo: c.repo,
+        subPath: c.path,
         daysToKeep,
         maxToKeep,
         keepFilter,
         artifactoryCreds,
-      );
+      });
 
       // if branch folder is now empty, delete it
       const cInfo = await getRemoteArtifactInfo(
@@ -377,6 +412,11 @@ async function cleanBranchFolders(
       }
     }),
   );
+
+  if (!ignoreErrors && results.some((r) => r.status === 'rejected')) {
+    throw new Error('Some artifacts were not deleted.');
+  }
+  return results;
 }
 
 export async function artifactoryCleanup(
@@ -384,7 +424,7 @@ export async function artifactoryCleanup(
   maxToKeep?: number,
   artifactoryConfig?: ArtifactoryConfig,
   artifactoryCreds?: ArtifactoryCreds,
-) {
+): Promise<boolean> {
   const {
     root: rt,
     'integration-days-to-keep': intDaysKeep,
@@ -407,25 +447,23 @@ export async function artifactoryCleanup(
     // Clean up integration repo artifacts
     const artPath = aPath || getPkgName();
     if (intBranchFolders) {
-      await cleanBranchFolders(
-        rt,
-        integration,
-        artPath,
-        dToK,
-        mToK,
-        null,
+      await cleanBranchFolders({
+        rootUri: rt,
+        repo: integration,
+        subPath: artPath,
+        daysToKeep: dToK,
+        maxToKeep: mToK,
         artifactoryCreds,
-      );
+      });
     } else {
-      await cleanChildren(
-        rt,
-        integration,
-        artPath,
-        dToK,
-        mToK,
-        null,
+      await cleanChildren({
+        rootUri: rt,
+        repo: integration,
+        subPath: artPath,
+        daysToKeep: dToK,
+        maxToKeep: mToK,
         artifactoryCreds,
-      );
+      });
     }
   }
 
@@ -434,15 +472,15 @@ export async function artifactoryCleanup(
     const name = getPkgName(false);
     const scope = getPkgScope();
     const releaseRegex = new RegExp(`${name}-\\d+\\.\\d+\\.\\d+\\.tgz`, 'i');
-    await cleanChildren(
-      rt,
-      npmClean,
-      scope ? `${scope}/${name}/-/${scope}` : `${name}/-`,
-      dToK,
-      mToK,
-      (c) => !!c.path.match(releaseRegex),
+    await cleanChildren({
+      rootUri: rt,
+      repo: npmClean,
+      subPath: scope ? `${scope}/${name}/-/${scope}` : `${name}/-`,
+      daysToKeep: dToK,
+      maxToKeep: mToK,
+      keepFilter: (c) => !!c.path.match(releaseRegex),
       artifactoryCreds,
-    );
+    });
   }
   return true;
 }
@@ -459,7 +497,7 @@ export async function getNpmArtifacts(
   releasedOnly: boolean = false,
   artifactoryConfig?: ArtifactoryConfig,
   artifactoryCreds?: ArtifactoryCreds,
-) {
+): Promise<RemoteArtifactInfo[]> {
   const { root: rt, npm } = artifactoryConfig || getArtifactoryConfig();
   if (!rt || !npm) {
     throw new Error('artifactoryConfig info missing from package.json');
@@ -553,7 +591,7 @@ export async function downloadRepositoryFile(
   filePath: string,
   saveAs: string,
   artifactoryCreds?: ArtifactoryCreds,
-) {
+): Promise<Response> {
   const { root: rt } = getArtifactoryConfig();
   if (!rt) {
     throw new Error('artifactoryConfig info missing from package.json');

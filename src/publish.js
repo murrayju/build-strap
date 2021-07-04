@@ -2,27 +2,38 @@
 import path from 'path';
 import fs from 'fs-extra';
 import { run, buildLog } from './run';
-import { getVersion } from './version';
+import { getVersion, type Version } from './version';
 import { getPkgName } from './pkg';
-import { artifactoryNpm, artifactoryStandard } from './artifactory';
-import type { ArtifactoryConfig, ArtifactoryCreds } from './artifactory';
+import {
+  artifactoryNpm,
+  artifactoryStandard,
+  type ArtifactoryConfig,
+  type ArtifactoryCreds,
+} from './artifactory';
 import { npmPublish } from './npm';
 import type { NpmConfig, NpmCreds } from './npm';
-import { tgzDir } from './tgz';
-import { distDir as getDistDir, outDir as getOutDir } from './paths';
+import { tgzDir, type ArtifactInfo } from './tgz';
 
 export type CreateArtifactOptions = {
-  distDir?: string, // What to bundle up and publish
-  outDir?: string, // Where the bundled tgz file should go
+  distDir: string, // What to bundle up and publish
+  outDir: string, // Where the bundled tgz file should go
   fileName?: string, // (optional) Specify the tgz file name
 };
 
+export type Artifact = {
+  name: string,
+  version: Version,
+  info: ArtifactInfo,
+  fileName: string,
+  filePath: string,
+}
+
 // create tgz from distDir in outDir
 export async function createArtifact({
-  distDir = getDistDir(),
-  outDir = getOutDir(),
+  distDir,
+  outDir,
   fileName,
-}: CreateArtifactOptions) {
+}: CreateArtifactOptions): Promise<Artifact> {
   const version = await getVersion();
   const name = getPkgName();
 
@@ -65,8 +76,8 @@ export type PublishConfiguration = {
 // tgz the distDir, and copy it to the outDir
 // if toArtifactory is true, also publishes to artifactory
 export async function publish({
-  distDir = getDistDir(),
-  outDir = getOutDir(),
+  distDir,
+  outDir,
   doPublish,
   prePublishFn,
   fileName,

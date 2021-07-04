@@ -3,7 +3,6 @@ import type { ArtifactoryConfig } from './artifactory';
 import type { CertConfig } from './cert';
 import type { DockerConfig } from './docker';
 import type { NpmConfig } from './npm';
-import type { PathConfig } from './paths';
 
 export type BuildStrapConfig = {
   repoType?: 'git' | 'hg',
@@ -14,7 +13,6 @@ export type BuildStrapConfig = {
   cert?: CertConfig,
   docker?: DockerConfig,
   npm?: NpmConfig,
-  paths?: PathConfig,
 };
 
 type StringMap = {

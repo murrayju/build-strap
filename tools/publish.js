@@ -1,6 +1,7 @@
 // @flow
 import { run, publish, getVersion, buildLog } from '../src/index';
 import build from './build';
+import paths from './paths';
 
 export default async function doPublish() {
   if (process.argv.includes('--watch')) {
@@ -24,6 +25,8 @@ export default async function doPublish() {
     await run(build);
   }
   await publish({
+    distDir: paths.dist,
+    outDir: paths.out,
     doPublish: reallyPublish,
   });
 }

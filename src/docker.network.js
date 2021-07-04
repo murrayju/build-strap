@@ -1,8 +1,9 @@
 // @flow
+import throttle from 'lodash/throttle';
 import { spawn } from './cp';
 import { parseDockerDate } from './docker';
 
-export type DockerNetwork = {
+export type DockerNetwork = {|
   id: string,
   name: string,
   driver: string,
@@ -10,12 +11,17 @@ export type DockerNetwork = {
   created: Date,
   IPv6: boolean,
   labels: string[],
-};
+  exists: () => Promise<boolean>,
+  rm: () => Promise<void>,
+|};
 
 type DockerNetworkLsOptions = {
   filter?: (network: DockerNetwork) => boolean,
 };
-export async function dockerNetworkLs({
+
+// calling this function in rapid succession can lead to errors.
+// prefer throttled version
+export async function _dockerNetworkLs({
   filter,
 }: DockerNetworkLsOptions = {}): Promise<DockerNetwork[]> {
   return (
@@ -43,15 +49,22 @@ export async function dockerNetworkLs({
         created: parseDockerDate(CreatedAt),
         IPv6: IPv6 === 'true',
         labels: Labels.split(',').map((l) => l.trim()),
+        exists: async () => !!(await dockerNetworkFind(id)),
+        rm: async () => dockerNetworkRm(id),
       };
     })
     .filter((n) => n.id && (typeof filter === 'function' ? filter(n) : true));
 }
+export const dockerNetworkLs: (
+  DockerNetworkLsOptions | void,
+) => Promise<DockerNetwork[]> = throttle(_dockerNetworkLs, 500, {
+  trailing: false,
+});
 
 export async function dockerNetworkFind(
   networkName: string,
   options?: DockerNetworkLsOptions,
-) {
+): Promise<?DockerNetwork> {
   return (await dockerNetworkLs(options)).find(
     (n) => n.name === networkName || n.id === networkName,
   );
@@ -84,7 +97,7 @@ export async function dockerNetworkCreate(
     ipv6,
     labels = [],
   }: DockerNetworkCreateOptions = {},
-) {
+): Promise<?DockerNetwork> {
   const existing = await dockerNetworkFind(networkName);
   if (existing) return existing;
   await spawn('docker', [
@@ -108,12 +121,24 @@ export async function dockerNetworkCreate(
   return dockerNetworkFind(networkName);
 }
 
+/**
+ * Removes a network by id
+ * @param {string} id The id of the network
+ */
+export async function dockerNetworkRm(id: string) {
+  await spawn('docker', ['network', 'rm', id]);
+}
+
+/**
+ * Removes all networks with the given name
+ * @param {string} networkName The name of the network
+ */
 export async function dockerNetworkDelete(networkName: string) {
   let existing;
   // eslint-disable-next-line no-cond-assign, no-await-in-loop
   while ((existing = await dockerNetworkFind(networkName))) {
     // eslint-disable-next-line no-await-in-loop
-    await spawn('docker', ['network', 'rm', existing.id]);
+    await existing.rm();
   }
 }
 

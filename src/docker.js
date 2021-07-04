@@ -23,7 +23,7 @@ export function getDockerConfig(): DockerConfig {
   return getCfg().docker || {};
 }
 
-export const parseDockerDate = (date: string) =>
+export const parseDockerDate = (date: string): Date =>
   moment(date, 'YYYY-MM-DD HH:mm:ss ZZ').toDate();
 
 export async function dockerBuild(
@@ -34,7 +34,7 @@ export async function dockerBuild(
   repo: string = getDockerRepo(),
   dockerFile: string = './Dockerfile',
   workDir: string = '.',
-) {
+): Promise<string> {
   const args = [
     'build',
     ...['-f', path.resolve(dockerFile)],
@@ -52,8 +52,8 @@ export async function dockerTag(
   imageId: string,
   tags: string[] = ['latest'],
   repo?: string = getDockerRepo(),
-) {
-  return Promise.all(
+): Promise<void> {
+  await Promise.all(
     tags.map(async (t) => {
       await spawn('docker', ['tag', imageId, `${repo}:${t}`]);
       buildLog(`Tagged image ${imageId} as ${repo}:${t}`);
@@ -61,19 +61,30 @@ export async function dockerTag(
   );
 }
 
-export async function dockerApplyStandardTags(
+/**
+ * Apply the standard convention for tagging the docker image for the project,
+ * based on the source control branch being built.
+ * For releases, applies `latest`, `M.m.p`, `M.m`, `M`
+ * For release candidates, applies `latest-rc`
+ * For feature branches, applies `latest-feature`
+ * For development branch, applies `latest-dev`
+ * All other branches, no tag is applies
+ * @param {string} imageId id of the docker image to which to apply the tags
+ * @param {string} repo optional override of the docker repo url to use (derived from package.json by default)
+ */
+export async function dockerTagVersion(
   imageId: string,
   repo?: string = getDockerRepo(),
 ) {
-  const { major, minor, patch, branch, isRelease } = await getVersion();
+  const { isRelease, major, minor, patch, branch } = await getVersion();
   // determine what tags to apply
   if (isRelease) {
     await dockerTag(
       imageId,
-      ['latest', major, `${major}.${minor}`, `${major}.${minor}.${patch}`],
+      ['latest', `${major}`, `${major}.${minor}`, `${major}.${minor}.${patch}`],
       repo,
     );
-  } else if (branch === (await getDevBranch())) {
+  } else if (branch === getDevBranch()) {
     await dockerTag(imageId, ['latest-dev'], repo);
   } else if (branch.match(/^(release|patch)-/)) {
     await dockerTag(imageId, ['latest-rc'], repo);
@@ -131,7 +142,10 @@ export async function dockerImages(
     );
 }
 
-export async function getDockerId(tag: string = 'latest', repo?: ?string) {
+export async function getDockerId(
+  tag: string = 'latest',
+  repo?: ?string,
+): Promise<string> {
   return (await dockerImages(repo, (m) => m.tag === tag)).map((m) => m.id)[0];
 }
 
@@ -164,7 +178,10 @@ export async function getDockerTags(
   ).map((m) => (fullName ? `${m.repository}:${m.tag}` : m.tag));
 }
 
-export async function getDockerDigest(imageId: string, repo?: string) {
+export async function getDockerDigest(
+  imageId: string,
+  repo?: string,
+): Promise<string> {
   return (await dockerImages(repo, (m) => m.id === imageId)).map(
     (m) => m.digest,
   )[0];
@@ -174,11 +191,18 @@ export async function dockerLogin(
   user: string,
   password: string,
   registry: string,
-) {
+): Promise<void> {
   const reg = registry || getDockerConfig().registry;
-  return spawn(
+  await spawn(
     'docker',
-    ['login', '-u', user || '', '-p', password || '', ...(reg ? [reg] : [])],
+    [
+      'login',
+      '-u',
+      user || process.env.ARTIFACTORY_USER || '',
+      '-p',
+      password || process.env.ARTIFACTORY_PASSWORD || '',
+      ...(reg ? [reg] : []),
+    ],
     { stdio: 'inherit' },
   );
 }
@@ -205,7 +229,10 @@ export async function dockerPull({
   offline = process.argv.includes('--offline'),
   testUrl,
 }: DockerPullOptions) {
-  if (offline || !(await isReachable(testUrl || 'https://hub.docker.com'))) {
+  if (
+    offline ||
+    !(await isReachable(testUrl || 'https://hub.docker.com'))
+  ) {
     if (offline === false) {
       throw new Error('Offline, cannot docker pull');
     }
@@ -219,7 +246,7 @@ export async function dockerPull({
 export async function dockerRmi(
   images: string[] = [],
   ignoreErrors: boolean = true,
-) {
+): Promise<void> {
   // must do these sequentially, or they will interfere with each other
   await images.reduce(async (prev, image) => {
     await prev;
@@ -235,7 +262,7 @@ export async function dockerRmi(
   }, Promise.resolve());
 }
 
-export function getDockerRepo() {
+export function getDockerRepo(): string {
   const { registry, repository: dkrRepo, name: dkrName } = getDockerConfig();
   const repository = dkrRepo || getPkgScope();
   const name = dkrName || getPkgName(false);
@@ -258,7 +285,7 @@ export type PullAndRunContainerOptions = {
 export async function dockerPullAndRunContainer(
   image: string,
   options: PullAndRunContainerOptions = {},
-) {
+): Promise<string> {
   const {
     runArgs = [],
     cmd = [],

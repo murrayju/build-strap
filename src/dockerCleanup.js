@@ -110,7 +110,7 @@ export const dockerImageCleanup = async ({
     ...(
       await dockerImages(
         null,
-        (m) => m.repository === '<none>' && m.tag === '<none>',
+        (m) => m.repository === '<none>' && m.tag === '<none>' && filterOld(m),
       )
     ).map((m) => m.id),
 

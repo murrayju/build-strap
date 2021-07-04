@@ -1,18 +1,28 @@
 // @flow
+import throttle from 'lodash/throttle';
 import { spawn } from './cp';
 
-export type DockerVolume = {
+type DockerVolumeInspectOutput = {
+  [string]: any,
+};
+
+export type DockerVolume = {|
   name: string,
   driver: string,
   scope: string,
   labels: string[],
   mountPoint: string,
-};
+  inspect: () => Promise<DockerVolumeInspectOutput>,
+  rm: () => Promise<void>,
+|};
 
 type DockerVolumeLsOptions = {
   filter?: (vol: DockerVolume) => boolean,
 };
-export async function dockerVolumeLs({
+
+// calling this function in rapid succession can lead to errors.
+// prefer throttled version
+export async function _dockerVolumeLs({
   filter,
 }: DockerVolumeLsOptions = {}): Promise<DockerVolume[]> {
   return (
@@ -41,13 +51,19 @@ export async function dockerVolumeLs({
         rm: async () => dockerVolumeRm(name),
       };
     })
-    .filter((v) => v.id && (typeof filter === 'function' ? filter(v) : true));
+    .filter((v) => v.name && (typeof filter === 'function' ? filter(v) : true));
 }
+
+export const dockerVolumeLs: (
+  DockerVolumeLsOptions | void,
+) => Promise<DockerVolume[]> = throttle(_dockerVolumeLs, 500, {
+  trailing: false,
+});
 
 export async function dockerVolumeFind(
   search: string,
   options?: DockerVolumeLsOptions,
-) {
+): Promise<?DockerVolume> {
   return (await dockerVolumeLs(options)).find(
     (v) => v.name === search || v.name.startsWith(search),
   );
@@ -61,7 +77,7 @@ export type DockerVolumeCreateOptions = {|
 export async function dockerVolumeCreate(
   name: string,
   { labels = [], driver, driverOpts = {} }: DockerVolumeCreateOptions = {},
-) {
+): Promise<?DockerVolume> {
   const existing = await dockerVolumeFind(name);
   if (existing) return existing;
   await spawn('docker', [
@@ -92,9 +108,11 @@ export async function dockerVolumeRm(
   }
 }
 
-export async function dockerVolumeInspect(
+// calling this function in rapid succession can lead to errors.
+// prefer throttled version
+export async function _dockerVolumeInspect(
   id: string | string[],
-): Promise<Array<{ [string]: any }>> {
+): Promise<DockerVolumeInspectOutput[]> {
   const ids = Array.isArray(id) ? id : [id];
   return (
     JSON.parse(
@@ -108,3 +126,11 @@ export async function dockerVolumeInspect(
     ) || []
   );
 }
+
+export const dockerVolumeInspect: (
+  string | string[],
+) => Promise<DockerVolumeInspectOutput[]> = throttle(
+  _dockerVolumeInspect,
+  500,
+  { trailing: true },
+);

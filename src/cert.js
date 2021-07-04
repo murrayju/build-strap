@@ -7,7 +7,6 @@ import { buildLog } from './run';
 import { readDir } from './fs';
 import { spawn } from './cp';
 import { getCfg } from './pkg';
-import { distDir } from './paths';
 
 export type CertConfig = {
   countryName?: string,
@@ -23,7 +22,7 @@ export function getCertConfig(): CertConfig {
   return getCfg().cert || {};
 }
 
-export function getIpAddresses() {
+export function getIpAddresses(): string[] {
   const iFaces = os.networkInterfaces();
   return Object.keys(iFaces).reduce(
     (prev, ifName) => [
@@ -36,7 +35,7 @@ export function getIpAddresses() {
 
 // Generate a self-signed certificate (if it doesn't exist)
 export async function generateCert(
-  targetDir: string = distDir(),
+  targetDir: string,
   force: boolean = process.argv.includes('--force-generateCert'),
 ) {
   if (process.argv.includes('--no-generateCert')) {

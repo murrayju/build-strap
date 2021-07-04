@@ -7,7 +7,6 @@ import { spawn, exec } from './cp';
 import { getCfg, getPkgName } from './pkg';
 import { getVersion, getDevBranch } from './version';
 import { buildLog } from './run';
-import { distDir } from './paths';
 
 export type NpmCreds = {
   username: string,
@@ -56,7 +55,7 @@ export async function npmGetVersions(
 }
 
 export type NpmPublishOptions = {|
-  publishPath?: string, // distDir, or package.tgz file
+  publishPath: string, // distDir, or package.tgz file
   npmConfig?: NpmConfig,
   npmCreds?: NpmCreds,
   npmAuthToken?: string,
@@ -66,14 +65,14 @@ export type NpmPublishOptions = {|
 |};
 
 export async function npmPublish({
-  publishPath = distDir(),
+  publishPath,
   npmConfig,
   npmCreds,
   npmAuthToken,
   tag,
   skipExisting = false,
   npmPath,
-}: NpmPublishOptions = {}) {
+}: NpmPublishOptions = {}): Promise<boolean> {
   const creds = npmCreds || envNpmCreds;
   const authToken = npmAuthToken || process.env.NPM_TOKEN;
   const name = getPkgName();

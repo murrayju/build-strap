@@ -108,7 +108,19 @@ export async function spawnAdv(
 
       // only fires if we failed to spawn
       p.on('error', (err) => {
-        reject(err);
+        // Here we have a workaround that reverses a "feature" of cross-spawn on Windows. See:
+        // https://jira.mmodal.com/browse/BTN-8
+        // https://github.com/moxystudio/node-cross-spawn/blob/master/lib/enoent.js#L23
+        // https://github.com/moxystudio/node-cross-spawn/issues/104
+        if (
+          process.platform === 'win32' &&
+          err.code === 'ENOENT' &&
+          err.errno === 'ENOENT'
+        ) {
+          handleExit(1, 'ENOENT');
+        } else {
+          reject(err);
+        }
       });
     } catch (err) {
       reject(err);

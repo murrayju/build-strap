@@ -7,7 +7,7 @@ export type FlowOptions = {|
 |};
 
 // Run the flow linter
-export async function flow(opts?: FlowOptions) {
+export async function flow(opts?: FlowOptions): Promise<string> {
   const { allBranches = false, incremental = true } = opts || {};
   return spawn(
     'flow',

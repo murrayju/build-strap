@@ -1,35 +1,42 @@
 // @flow
-import fs from 'fs-extra';
+import fs from 'fs';
 import { gitInfo } from './git';
 import { hgInfo } from './hg';
-import { getPkg, getCfg } from './pkg';
+import { getCfg, getPkg } from './pkg';
 import { buildLog } from './run';
 
-function getBuild() {
-  const arg = process.argv.find((el) => /^--buildNum=\d+$/.test(el));
-  return (arg && arg.substr(11)) || process.env.BUILD_NUMBER || 0;
+export function getBuild(): string {
+  let arg = process.argv.find((el) => /^--buildNum=\d+$/.test(el));
+  arg = arg && arg.substr(11);
+  return arg || process.env.BUILD_NUMBER || '0';
 }
 
-export function getReleaseBranch() {
+export function getReleaseBranch(): string {
   const { releaseBranch } = getCfg();
   return releaseBranch || 'master';
 }
 
-export async function getRepoType() {
+type RepoType = 'git' | 'hg' | 'unknown';
+export function getRepoType(): RepoType {
   const { repoType } = getCfg();
 
   return (
     repoType ||
-    ((await fs.exists('./.hg'))
+    (fs.existsSync('./.hg')
       ? 'hg'
-      : (await fs.exists('./.git'))
+      : fs.existsSync('./.git')
       ? 'git'
       : 'unknown')
   );
 }
 
-export async function getRepoInfo() {
-  const repoType = await getRepoType();
+type RepoInfo = {
+  branch: string,
+  revision: string,
+};
+
+export async function getRepoInfo(): Promise<RepoInfo> {
+  const repoType = getRepoType();
   const { branch, revision } =
     repoType === 'git'
       ? await gitInfo()
@@ -42,15 +49,15 @@ export async function getRepoInfo() {
   return { branch, revision };
 }
 
-export async function getDevBranch() {
+export function getDevBranch(): string {
   const { devBranch } = getCfg();
-  return devBranch || (await getRepoType()) === 'hg' ? 'default' : 'dev';
+  return devBranch || getRepoType() === 'hg' ? 'default' : 'dev';
 }
 
 export async function getIsRelease(
   passedBranch?: ?string = null,
   releaseOverride?: ?boolean = null,
-) {
+): Promise<boolean> {
   const branch = passedBranch || (await getRepoInfo()).branch;
   return releaseOverride != null
     ? releaseOverride
@@ -60,15 +67,29 @@ export async function getIsRelease(
 }
 
 let cacheVersion = true;
-export function useVersionCache(useCache: boolean = true) {
+export function useVersionCache(useCache: boolean = true): void {
   cacheVersion = useCache;
 }
+
+export type Version = {|
+  branch: string,
+  build: string,
+  info: string,
+  isRelease: boolean,
+  major: string,
+  minor: string,
+  name: string,
+  npm: string,
+  patch: string,
+  revision: string,
+  short: string,
+|};
 
 let version = null;
 export async function getVersion(
   logIt: boolean = true,
   release: ?boolean = null,
-) {
+): Promise<Version> {
   if (!cacheVersion || version == null) {
     const { version: pkgVers, name } = getPkg();
     const { branch, revision } = await getRepoInfo();
@@ -102,19 +123,19 @@ export async function getVersion(
   return version;
 }
 
-export async function getBanner() {
+export async function getBanner(): Promise<string> {
   const { copyright = '' } = getCfg();
   const { info, name } = await getVersion();
   const today = new Date();
   return `${name} v${info} | (c) ${today.getFullYear()} ${copyright} | built on ${today.toISOString()}`;
 }
 
-export async function getVersionCode() {
+export async function getVersionCode(): Promise<string> {
   return `// This file is auto-generated
 export const version = ${JSON.stringify(await getVersion(), null, 2)}`;
 }
 
-export async function getUniqueBuildTag() {
+export async function getUniqueBuildTag(): Promise<string> {
   const { branch, revision, build } = await getVersion();
   return `${branch}-${revision}-${build}`;
 }
