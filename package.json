@@ -46,7 +46,7 @@
     "set-value": "^4.0.0",
     "source-map-support": "^0.5.16",
     "stream-counter": "1",
-    "tar": "^6.1.2",
+    "tar": "^6.1.9",
     "url-join": "^4.0.1"
   },
   "devDependencies": {
