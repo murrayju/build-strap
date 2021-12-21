@@ -7,7 +7,10 @@
   "authors": [
     "Justin Murray <justin@murrayju.com>"
   ],
-  "repository": "https://github.com/murrayju/build-strap",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/murrayju/build-strap"
+  },
   "main": "dist/build-tools-node.js",
   "engines": {
     "node": ">=7",
