@@ -6,9 +6,8 @@ import { getCfg, getPkg } from './pkg';
 import { buildLog } from './run';
 
 export function getBuild(): string {
-  let arg = process.argv.find((el) => /^--buildNum=\d+$/.test(el));
-  arg = arg && arg.substr(11);
-  return arg || process.env.BUILD_NUMBER || '0';
+  const arg = process.argv.find((el) => /^--buildNum=\d+$/.test(el));
+  return (arg && arg.substr(11)) || process.env.BUILD_NUMBER || '0';
 }
 
 export function getReleaseBranch(): string {
@@ -17,7 +16,7 @@ export function getReleaseBranch(): string {
 }
 
 type RepoType = 'git' | 'hg' | 'unknown';
-export function getRepoType(): RepoType {
+export async function getRepoType(): Promise<RepoType> {
   const { repoType } = getCfg();
 
   return (
@@ -36,7 +35,7 @@ type RepoInfo = {
 };
 
 export async function getRepoInfo(): Promise<RepoInfo> {
-  const repoType = getRepoType();
+  const repoType = await getRepoType();
   const { branch, revision } =
     repoType === 'git'
       ? await gitInfo()
@@ -49,9 +48,9 @@ export async function getRepoInfo(): Promise<RepoInfo> {
   return { branch, revision };
 }
 
-export function getDevBranch(): string {
+export async function getDevBranch(): Promise<string> {
   const { devBranch } = getCfg();
-  return devBranch || getRepoType() === 'hg' ? 'default' : 'dev';
+  return devBranch || (await getRepoType()) === 'hg' ? 'default' : 'dev';
 }
 
 export async function getIsRelease(
@@ -118,7 +117,9 @@ export async function getVersion(
       npm,
       info,
     };
-    if (logIt) buildLog(`Building version ${info}`);
+    if (logIt) {
+      buildLog(`Building version ${info}`);
+    }
   }
   return version;
 }

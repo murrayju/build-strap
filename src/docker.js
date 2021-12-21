@@ -84,7 +84,7 @@ export async function dockerTagVersion(
       ['latest', `${major}`, `${major}.${minor}`, `${major}.${minor}.${patch}`],
       repo,
     );
-  } else if (branch === getDevBranch()) {
+  } else if (branch === (await getDevBranch())) {
     await dockerTag(imageId, ['latest-dev'], repo);
   } else if (branch.match(/^(release|patch)-/)) {
     await dockerTag(imageId, ['latest-rc'], repo);
@@ -229,10 +229,7 @@ export async function dockerPull({
   offline = process.argv.includes('--offline'),
   testUrl,
 }: DockerPullOptions) {
-  if (
-    offline ||
-    !(await isReachable(testUrl || 'https://hub.docker.com'))
-  ) {
+  if (offline || !(await isReachable(testUrl || 'https://hub.docker.com'))) {
     if (offline === false) {
       throw new Error('Offline, cannot docker pull');
     }

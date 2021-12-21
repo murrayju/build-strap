@@ -33,7 +33,7 @@ export async function copySrc({
   to,
   watch = process.argv.includes('--watch'),
   cbFn,
-}: CopySrcOptions = {}) {
+}: CopySrcOptions = {}): Promise<void> {
   await copyDir(from, to);
   if (cbFn) await cbFn();
   if (watch) {

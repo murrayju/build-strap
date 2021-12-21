@@ -2,8 +2,8 @@
 
 [ignore]
 <PROJECT_ROOT>/download/.*
-<PROJECT_ROOT>/build/.*
-<PROJECT_ROOT>/\.hg/.*
+<PROJECT_ROOT>/dist/.*
+<PROJECT_ROOT>/out/.*
 <PROJECT_ROOT>/\.git/.*
 
 [include]

@@ -1,5 +1,5 @@
 # This image is used to build a release
-FROM node:12
+FROM node:16
 
 # Defaults when running this container
 EXPOSE 80
