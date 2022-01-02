@@ -1,14 +1,15 @@
 syntax: glob
+*.generated.*
+*.log
+*.orig
+build/
 dist/
 download/
-node_modules/
-out/
-npm-debug.log
-*.generated.*
-*.orig
-*.log
 latest.build.*
 node*
+node_modules/
+npm-debug.log
+out/
 yarn
 yarn.bat
 yarn.ps1

@@ -13,9 +13,7 @@
   },
   "eslint.packageManager": "yarn",
   "cSpell.words": [
-    "artifactory",
     "creds",
-    "flowtype",
     "linebreak",
     "repo",
     "repos"

@@ -1,97 +1,82 @@
 {
   "name": "build-strap",
-  "version": "3.0.0",
+  "version": "4.0.0",
   "description": "Node scripts for building things",
-  "private": true,
   "license": "MIT",
   "authors": [
     "Justin Murray <justin@murrayju.com>"
   ],
-  "repository": "https://github.com/murrayju/build-strap",
-  "main": "dist/build-tools-node.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/murrayju/build-strap"
+  },
+  "type": "module",
+  "main": "dist/src/index.js",
+  "types": "dist/src/index.d.js",
   "engines": {
-    "node": ">=7",
-    "npm": ">=4"
+    "node": ">=16"
   },
   "buildStrap": {
-    "nodeVersion": "14.17.2",
-    "yarnVersion": "1.22.5",
+    "nodeVersion": "16.13.1",
+    "yarnVersion": "1.22.17",
     "repoType": "git",
     "copyright": "Justin Murray",
     "releaseBranch": "master",
     "devBranch": "dev",
     "npm": {
-      "publish": true,
-      "registry": "https://registry.yarnpkg.com/"
+      "publish": true
     },
     "docker": {
-      "repository": "murrayju"
+      "repository": "murrayju",
+      "registry": "ghcr.io"
     }
   },
   "dependencies": {
-    "bytes": "3",
+    "bytes": "^3.1.1",
     "chokidar": "^3.5.2",
     "cross-spawn": "^7.0.3",
     "fs-extra": "^10.0.0",
-    "get-port": "^5.1.1",
-    "glob": "^7.1.7",
-    "is-reachable": "^5.0.0",
+    "get-port": "^6.0.0",
+    "glob": "^7.2.0",
+    "is-reachable": "^5.1.1",
     "js-yaml": "^4.1.0",
-    "lodash": "^4.17.21",
-    "md5-file": "^5.0.0",
+    "lodash-es": "^4.17.21",
     "moment": "^2.29.1",
-    "request": "^2.88.2",
-    "request-promise-native": "^1.0.9",
+    "node-fetch": "^3.1.0",
     "rimraf": "^3.0.2",
-    "set-value": "^4.0.0",
-    "source-map-support": "^0.5.16",
     "stream-counter": "1",
-    "tar": "^6.1.0",
-    "url-join": "^4.0.1"
+    "tar": "^6.1.11"
   },
   "devDependencies": {
-    "@babel/cli": "^7.8.4",
-    "@babel/core": "^7.9.0",
-    "@babel/node": "^7.8.7",
-    "@babel/plugin-proposal-class-properties": "^7.8.3",
-    "@babel/plugin-proposal-decorators": "^7.8.3",
-    "@babel/plugin-proposal-do-expressions": "^7.8.3",
-    "@babel/plugin-proposal-export-default-from": "^7.8.3",
-    "@babel/plugin-proposal-export-namespace-from": "^7.8.3",
-    "@babel/plugin-proposal-function-sent": "^7.8.3",
-    "@babel/plugin-proposal-json-strings": "^7.8.3",
-    "@babel/plugin-proposal-logical-assignment-operators": "^7.8.3",
-    "@babel/plugin-proposal-nullish-coalescing-operator": "^7.8.3",
-    "@babel/plugin-proposal-numeric-separator": "^7.8.3",
-    "@babel/plugin-proposal-optional-chaining": "^7.9.0",
-    "@babel/plugin-proposal-pipeline-operator": "^7.8.3",
-    "@babel/plugin-proposal-throw-expressions": "^7.8.3",
-    "@babel/plugin-syntax-dynamic-import": "^7.8.3",
-    "@babel/plugin-syntax-import-meta": "^7.8.3",
-    "@babel/preset-env": "^7.9.5",
-    "@babel/preset-flow": "^7.9.0",
-    "babel-eslint": "^10.1.0",
+    "@tsconfig/node16": "^1.0.2",
+    "@types/bytes": "^3.1.1",
+    "@types/cross-spawn": "^6.0.2",
+    "@types/eslint": "^8.2.1",
+    "@types/fs-extra": "^9.0.13",
+    "@types/glob": "^7.2.0",
+    "@types/js-yaml": "^4.0.5",
+    "@types/lodash-es": "^4.17.5",
+    "@types/rimraf": "^3.0.2",
+    "@types/tar": "^6.1.1",
+    "@typescript-eslint/eslint-plugin": "^5.8.0",
+    "@typescript-eslint/parser": "^5.8.0",
     "camelcase": "^6.2.0",
-    "eslint": "^7.5.0",
-    "eslint-config-airbnb-base": "^14.1.0",
+    "eslint": "^8.5.0",
+    "eslint-config-airbnb-base": "^15.0.0",
     "eslint-config-prettier": "^8.3.0",
-    "eslint-import-resolver-node": "^0.3.3",
-    "eslint-plugin-babel": "5",
-    "eslint-plugin-flowtype": "^5.8.0",
-    "eslint-plugin-import": "^2.20.2",
-    "eslint-plugin-jsx-a11y": "^6.2.3",
-    "eslint-plugin-prettier": "^3.1.3",
-    "eslint-plugin-react": "^7.19.0",
-    "flow-bin": "^0.154.0",
-    "prettier": "^2.0.4"
-  },
-  "resolutions": {
-    "set-value": "2.0.1"
+    "eslint-import-resolver-node": "^0.3.6",
+    "eslint-plugin-import": "^2.22.1",
+    "eslint-plugin-jsx-a11y": "^6.4.1",
+    "eslint-plugin-prettier": "^4.0.0",
+    "eslint-plugin-react": "^7.22.0",
+    "eslint-plugin-sort-destructure-keys": "^1.4.0",
+    "eslint-plugin-sort-keys-fix": "^1.1.2",
+    "eslint-plugin-typescript-sort-keys": "^2.1.0",
+    "prettier": "^2.2.1",
+    "ts-node": "^10.4.0",
+    "typescript": "^4.5.4"
   },
   "scripts": {
-    "build": "babel-node tools/run build",
-    "publish": "babel-node tools/run publish",
-    "test": "babel-node tools/run publish",
-    "run": "babel-node tools/run"
+    "target": "node --loader ts-node/esm ./targets/run.ts"
   }
 }

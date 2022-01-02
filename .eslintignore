@@ -1,3 +1,4 @@
-node_modules/
-download/
+build/
 dist/
+download/
+node_modules/
