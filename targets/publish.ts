@@ -1,25 +1,17 @@
-import {
-  buildLog,
-  getVersion,
-  npmPack,
-  npmPublish,
-  run,
-} from '../src/index.js';
+import fs from 'fs-extra';
 
-import build from './build.js';
+import { buildLog, getVersion, run, yarnPublish } from '../src/index.js';
 
+import doPackage from './package.js';
+
+/**
+ * Publish to npm.
+ */
 export default async function runPublish() {
+  const publishPath = await run(doPackage);
+
   const version = await getVersion();
   const isDevBuild = parseInt(version.build, 10) === 0;
-
-  if (!process.argv.includes('--publish-only')) {
-    await run(build);
-  }
-
-  const publishPath = await npmPack({
-    destination: './out',
-  });
-
   const doPublish = process.argv.includes('--force-publish') || !isDevBuild;
   if (!doPublish) {
     buildLog(
@@ -28,5 +20,6 @@ export default async function runPublish() {
     return;
   }
 
-  await npmPublish({ publishPath });
+  await fs.copyFile('./dist/package.json', './out/package.json');
+  await yarnPublish({ publishPath });
 }

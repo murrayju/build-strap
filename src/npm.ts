@@ -2,7 +2,7 @@ import fs from 'fs-extra';
 import { platform } from 'os';
 import path from 'path';
 
-import { exec, spawn } from './cp.js';
+import { spawn, SpawnOptions, SpawnResult } from './cp.js';
 import { getCfg, getPkgName } from './pkg.js';
 import { buildLog } from './run.js';
 import { getDevBranch, getVersion } from './version.js';
@@ -25,17 +25,42 @@ export function getNpmConfig(): NpmConfig {
   return getCfg().npm || {};
 }
 
-const envNpmCreds: null | NpmCreds =
+export const envNpmCreds: null | NpmCreds =
   (process.env.NPM_CREDS && JSON.parse(process.env.NPM_CREDS)) || null;
 
 const npmExe = (npmPath?: string) =>
   npmPath || (platform() === 'win32' ? 'npm.cmd' : 'npm');
 
-export async function npmExec(
-  args: string[],
-  npmPath?: string,
-): Promise<string> {
-  return (await exec(`${npmExe(npmPath)} ${args.join(' ')}`)).stdout.toString();
+export interface NpmOptions {
+  args?: string[];
+  npmPath?: string;
+  spawnOptions?: SpawnOptions;
+}
+
+export async function npm({
+  args = [],
+  spawnOptions,
+  npmPath,
+}: NpmOptions = {}): Promise<SpawnResult> {
+  const localNpm = path.join(
+    path.dirname(process.execPath),
+    'lib/node_modules/npm/bin/npm-cli.js',
+  );
+
+  const spawnOpts = {
+    env: process.env,
+    shell: true,
+    stdio: 'inherit',
+    ...spawnOptions,
+  } as SpawnOptions;
+
+  return npmPath
+    ? spawn(npmPath, args, spawnOpts)
+    : (await fs.pathExists(localNpm))
+    ? // prefer to use local copy of npm
+      spawn(process.execPath, [localNpm, ...args], spawnOpts)
+    : // fall back to globally installed npm
+      spawn(npmExe(), args, spawnOpts);
 }
 
 export async function npmGetVersions(
@@ -44,7 +69,16 @@ export async function npmGetVersions(
 ): Promise<string[]> {
   try {
     return JSON.parse(
-      await npmExec(['show', packageName, 'versions'], npmPath),
+      (
+        await npm({
+          args: ['show', packageName, 'versions', '--json'],
+          npmPath,
+          spawnOptions: {
+            captureOutput: true,
+            stdio: 'pipe',
+          },
+        })
+      ).stdout.trim(),
     );
   } catch (err: any) {
     buildLog(
@@ -52,6 +86,39 @@ export async function npmGetVersions(
     );
     return [];
   }
+}
+
+interface NpmWriteRcOptions {
+  authToken?: string;
+  creds?: NpmCreds | null;
+  outPath: string;
+  registry?: string;
+}
+
+export async function npmWriteRc({
+  authToken,
+  creds,
+  outPath,
+  registry,
+}: NpmWriteRcOptions): Promise<void> {
+  // Write out .npmrc with credentials
+  const theRegistry = registry || 'https://registry.npmjs.org/';
+  const [, host] = /^(?:http(?:s)?:\/\/)?(.+)$/.exec(theRegistry) || [];
+  await fs.mkdirp(path.dirname(outPath));
+  await fs.writeFile(
+    outPath,
+    `registry=${theRegistry}
+${authToken ? `//${host}:_authToken=${authToken}` : ''}
+${
+  creds
+    ? `_auth=${Buffer.from(`${creds.username}:${creds.password}`).toString(
+        'base64',
+      )}
+always-auth=true
+email=${creds.email}`
+    : ''
+}`,
+  );
 }
 
 export interface NpmPublishOptions {
@@ -63,6 +130,7 @@ export interface NpmPublishOptions {
   publishPath?: string;
   skipExisting?: boolean;
   tag?: string;
+  workDir?: string;
 }
 
 export async function npmPublish({
@@ -73,6 +141,7 @@ export async function npmPublish({
   publishPath = '.',
   skipExisting = false,
   tag,
+  workDir: passedWorkDir,
 }: NpmPublishOptions = {}): Promise<boolean> {
   const creds = npmCreds || envNpmCreds;
   const authToken = npmAuthToken || process.env.NPM_TOKEN;
@@ -85,28 +154,25 @@ export async function npmPublish({
     return false;
   }
   const resolvedPath = path.resolve(publishPath);
-  const workDir = (await fs.stat(resolvedPath)).isDirectory()
-    ? resolvedPath
-    : path.dirname(resolvedPath);
+  const workDir =
+    passedWorkDir ||
+    ((await fs.stat(resolvedPath)).isDirectory()
+      ? resolvedPath
+      : path.dirname(resolvedPath));
+  if (!(await fs.pathExists(path.join(workDir, 'package.json')))) {
+    buildLog(
+      `warning: no package.json found in ${workDir}, skipping npm publish`,
+    );
+    return false;
+  }
   if (creds || registry || authToken) {
     // Write out .npmrc with credentials
-    const theRegistry = registry || 'https://registry.npmjs.org/';
-    const [, host] = /^(?:http(?:s)?:\/\/)?(.+)$/.exec(theRegistry) || [];
-    await fs.mkdirp(workDir);
-    await fs.writeFile(
-      path.join(workDir, '.npmrc'),
-      `registry=${theRegistry}
-${authToken ? `//${host}:_authToken=${authToken}` : ''}
-${
-  creds
-    ? `_auth=${Buffer.from(`${creds.username}:${creds.password}`).toString(
-        'base64',
-      )}
-always-auth=true
-email=${creds.email}`
-    : ''
-}`,
-    );
+    await npmWriteRc({
+      authToken: authToken ? `\${NPM_TOKEN}` : undefined,
+      creds,
+      outPath: path.join(workDir, '.npmrc'),
+      registry,
+    });
   }
   const existing = await npmGetVersions(name, npmPath);
   const { branch, isRelease, npm: npmVersion } = await getVersion();
@@ -121,9 +187,8 @@ email=${creds.email}`
       'Failed to publish npm package, this version already exists!',
     );
   }
-  await spawn(
-    npmExe(npmPath),
-    [
+  await npm({
+    args: [
       'publish',
       resolvedPath,
       '--tag',
@@ -137,11 +202,15 @@ email=${creds.email}`
       ...(dryRun ? ['--dry-run'] : []),
       '--color=always',
     ],
-    {
+    npmPath,
+    spawnOptions: {
       cwd: workDir,
-      stdio: 'inherit',
+      env: {
+        ...process.env,
+        NPM_TOKEN: authToken,
+      },
     },
-  );
+  });
   return true;
 }
 
@@ -166,20 +235,21 @@ export async function npmPack({
   if (destination) {
     await fs.ensureDir(destination);
   }
-  const { stdout } = await spawn(
-    npmExe(npmPath),
-    [
+  const { stdout } = await npm({
+    args: [
       'pack',
       ...(dryRun ? ['--dry-run'] : []),
-      ...(destination ? ['--pack-destination', destination] : []),
+      ...(destination ? ['--pack-destination', path.resolve(destination)] : []),
       '--color=always',
     ],
-    {
+    npmPath,
+    spawnOptions: {
       captureOutput: true,
-      cwd: workDir,
+      cwd: path.resolve(workDir),
       pipeOutput: true,
+      stdio: 'pipe',
     },
-  );
+  });
 
   return path.resolve(destination || '.', stdout.trim());
 }

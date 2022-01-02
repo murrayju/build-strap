@@ -2,7 +2,6 @@
   "name": "build-strap",
   "version": "4.0.0",
   "description": "Node scripts for building things",
-  "private": true,
   "license": "MIT",
   "authors": [
     "Justin Murray <justin@murrayju.com>"
@@ -25,8 +24,7 @@
     "releaseBranch": "master",
     "devBranch": "dev",
     "npm": {
-      "publish": true,
-      "registry": "https://registry.yarnpkg.com/"
+      "publish": true
     },
     "docker": {
       "repository": "murrayju",
@@ -80,8 +78,5 @@
   },
   "scripts": {
     "target": "node --loader ts-node/esm ./targets/run.ts"
-  },
-  "files": [
-    "dist/src"
-  ]
+  }
 }

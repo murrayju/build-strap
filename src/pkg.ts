@@ -22,11 +22,14 @@ export interface PackageJson {
   engines?: Record<string, string>;
   license?: string;
   main?: string;
+  module?: string;
   name: string;
   peerDependencies?: Record<string, string>;
   private?: boolean;
-  repository?: string;
+  repository?: string | { type: string; url: string };
   scripts?: Record<string, string>;
+  type?: string;
+  types?: string;
   version: string;
 }
 

@@ -5,7 +5,7 @@
     "declaration": true,
     "module": "esnext",
     "moduleResolution": "Node",
-    "outDir": "dist",
+    "outDir": "build",
     "typeRoots": ["node_modules/@types", "@types"],
     "resolveJsonModule": true
   },

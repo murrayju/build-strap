@@ -48,7 +48,7 @@ export interface RunCliOptions<Args extends string[], Result> {
 
 export async function runCli<Args extends string[], Result>({
   resolveFn = async (path: string) => import(`./${path}.js`),
-  defaultAction = 'publish',
+  defaultAction = 'build',
   argv = process.argv,
   passthroughArgv = false,
 }: RunCliOptions<Args, Result> = {}): Promise<Result> {

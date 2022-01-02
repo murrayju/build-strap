@@ -3,9 +3,18 @@ import path from 'path';
 
 import { spawn, SpawnOptions, SpawnResult } from './cp.js';
 import { readDir } from './fs.js';
-import { getPkg } from './pkg.js';
+import {
+  envNpmCreds,
+  getNpmConfig,
+  NpmConfig,
+  NpmCreds,
+  npmGetVersions,
+  npmWriteRc,
+} from './npm.js';
+import { getPkg, getPkgName } from './pkg.js';
 import { buildLog } from './run.js';
 import { generateFileHash } from './tgz.js';
+import { getDevBranch, getVersion } from './version.js';
 
 export interface YarnOptions {
   args?: string[];
@@ -118,4 +127,125 @@ export async function yarnUpgrade({
     }
   }
   await yarn({ args: ['upgrade'] });
+}
+
+export interface YarnPublishOptions {
+  npmAuthToken?: string;
+  npmConfig?: NpmConfig;
+  npmCreds?: NpmCreds;
+  npmPath?: string;
+  // distDir, or package.tgz file
+  publishPath?: string;
+  skipExisting?: boolean;
+  tag?: string;
+  workDir?: string;
+}
+
+export async function yarnPublish({
+  npmAuthToken,
+  npmConfig,
+  npmCreds,
+  npmPath,
+  publishPath = '.',
+  skipExisting = false,
+  tag,
+  workDir: passedWorkDir,
+}: YarnPublishOptions = {}): Promise<boolean> {
+  const creds = npmCreds || envNpmCreds;
+  const authToken = npmAuthToken || process.env.NPM_TOKEN;
+  const name = getPkgName();
+  const { access, publish, registry } = npmConfig || getNpmConfig();
+  if (!publish) {
+    buildLog(
+      'npm publish info missing from package.json, skipping npm publish',
+    );
+    return false;
+  }
+  const resolvedPath = path.resolve(publishPath);
+  const workDir =
+    passedWorkDir ||
+    ((await fs.stat(resolvedPath)).isDirectory()
+      ? resolvedPath
+      : path.dirname(resolvedPath));
+  if (!(await fs.pathExists(path.join(workDir, 'package.json')))) {
+    buildLog(
+      `warning: no package.json found in ${workDir}, skipping npm publish`,
+    );
+    return false;
+  }
+  if (creds || registry || authToken) {
+    // Write out .npmrc with credentials
+    await npmWriteRc({
+      authToken: authToken ? `\${NPM_TOKEN}` : undefined,
+      creds,
+      outPath: path.join(workDir, '.npmrc'),
+      registry,
+    });
+  }
+  const existing = await npmGetVersions(name, npmPath);
+  const { branch, isRelease, npm: npmVersion } = await getVersion();
+  if (existing.includes(npmVersion)) {
+    if (skipExisting) {
+      buildLog(
+        'npm package with this same version already exists. Skipping publish...',
+      );
+      return false;
+    }
+    throw new Error(
+      'Failed to publish npm package, this version already exists!',
+    );
+  }
+  await yarn({
+    args: [
+      'publish',
+      resolvedPath,
+      '--new-version',
+      npmVersion,
+      '--tag',
+      tag ||
+        (isRelease
+          ? 'latest'
+          : branch === (await getDevBranch())
+          ? 'next'
+          : 'branch'),
+      ...(access ? ['--access', access] : []),
+    ],
+    spawnOptions: {
+      cwd: workDir,
+      env: {
+        ...process.env,
+        FORCE_COLOR: 'true',
+        NPM_TOKEN: authToken,
+      },
+      shell: true,
+      stdio: 'inherit',
+    },
+  });
+  return true;
+}
+
+interface YarnPackOptions {
+  // directory in which to save tarball
+  destination: string;
+  // directory containing package.json to pack
+  workDir?: string;
+}
+
+export async function yarnPack({
+  destination,
+  workDir = '.',
+}: YarnPackOptions): Promise<string> {
+  await fs.ensureDir(destination);
+  const version = await getVersion();
+  const name = getPkgName();
+  const filename = path.resolve(destination, `${name}-${version.npm}.tgz`);
+  await yarn({
+    args: ['pack', ...(destination ? ['--filename', filename] : [])],
+    spawnOptions: {
+      cwd: path.resolve(workDir),
+      pipeOutput: true,
+    },
+  });
+
+  return filename;
 }
