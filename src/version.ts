@@ -52,7 +52,7 @@ export async function getRepoInfo(): Promise<RepoInfo> {
 
 export async function getDevBranch(): Promise<string> {
   const { devBranch } = getCfg();
-  return devBranch || (await getRepoType()) === 'hg' ? 'default' : 'dev';
+  return devBranch || ((await getRepoType()) === 'hg' ? 'default' : 'dev');
 }
 
 export async function getIsRelease(
