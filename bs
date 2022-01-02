@@ -43,8 +43,8 @@
     tar xzf $cliDl -C $downloadDir
     mv $downloadDir/murrayju-build-strap-cli* $cliDir
   fi
-  cp $cliDir/bs* $cliDir/node* $cliDir/yarn* .
+  cp $cliDir/{node,nodeBootstrap.sh,yarn} .
 }
 
 ./yarn install
-exec ./yarn run run "$@"
+exec ./yarn run target "$@"

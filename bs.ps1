@@ -47,5 +47,5 @@ if (![System.IO.File]::Exists('yarn.ps1') -or ![System.IO.File]::Exists('nodeBoo
 & ./yarn.ps1 install
 
 # Run yarn run (pass through args to specify build tasks)
-& ./yarn.ps1 run run $args
+& ./yarn.ps1 run target $args
 exit $LastExitCode

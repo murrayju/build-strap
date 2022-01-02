@@ -1,7 +1,0 @@
-.vscode/
-out/
-dist/
-download/
-node_modules/
-Dockerfile
-latest.build*

@@ -11,10 +11,11 @@
     "type": "git",
     "url": "https://github.com/murrayju/build-strap"
   },
-  "main": "dist/build-tools-node.js",
+  "type": "module",
+  "module": "dist/index.js",
+  "types": "dist/index.d.js",
   "engines": {
-    "node": ">=7",
-    "npm": ">=4"
+    "node": ">=16"
   },
   "buildStrap": {
     "nodeVersion": "16.13.1",
@@ -28,73 +29,59 @@
       "registry": "https://registry.yarnpkg.com/"
     },
     "docker": {
-      "repository": "murrayju"
+      "repository": "murrayju",
+      "registry": "ghcr.io"
     }
   },
   "dependencies": {
-    "bytes": "3",
+    "bytes": "^3.1.1",
     "chokidar": "^3.5.2",
     "cross-spawn": "^7.0.3",
     "fs-extra": "^10.0.0",
-    "get-port": "^5.1.1",
-    "glob": "^7.1.7",
-    "is-reachable": "^5.0.0",
+    "get-port": "^6.0.0",
+    "glob": "^7.2.0",
+    "is-reachable": "^5.1.1",
     "js-yaml": "^4.1.0",
-    "lodash": "^4.17.21",
-    "md5-file": "^5.0.0",
+    "lodash-es": "^4.17.21",
     "moment": "^2.29.1",
-    "request": "^2.88.2",
-    "request-promise-native": "^1.0.9",
-    "rimraf": "^3.0.2",
-    "set-value": "^4.0.1",
-    "source-map-support": "^0.5.16",
+    "node-fetch": "^3.1.0",
     "stream-counter": "1",
-    "tar": "^6.1.9",
+    "tar": "^6.1.11",
     "url-join": "^4.0.1"
   },
   "devDependencies": {
-    "@babel/cli": "^7.12.10",
-    "@babel/core": "^7.12.10",
-    "@babel/node": "^7.12.10",
-    "@babel/plugin-proposal-class-properties": "^7.12.1",
-    "@babel/plugin-proposal-decorators": "^7.12.12",
-    "@babel/plugin-proposal-do-expressions": "^7.12.1",
-    "@babel/plugin-proposal-export-default-from": "^7.12.1",
-    "@babel/plugin-proposal-export-namespace-from": "^7.12.1",
-    "@babel/plugin-proposal-function-sent": "^7.12.1",
-    "@babel/plugin-proposal-json-strings": "^7.12.1",
-    "@babel/plugin-proposal-logical-assignment-operators": "^7.12.1",
-    "@babel/plugin-proposal-nullish-coalescing-operator": "^7.12.1",
-    "@babel/plugin-proposal-numeric-separator": "^7.12.7",
-    "@babel/plugin-proposal-optional-chaining": "^7.12.7",
-    "@babel/plugin-proposal-pipeline-operator": "^7.12.1",
-    "@babel/plugin-proposal-throw-expressions": "^7.12.1",
-    "@babel/plugin-syntax-dynamic-import": "^7.8.3",
-    "@babel/plugin-syntax-import-meta": "^7.8.3",
-    "@babel/preset-env": "^7.12.11",
-    "@babel/preset-flow": "^7.12.1",
-    "babel-eslint": "^10.1.0",
+    "@tsconfig/node16": "^1.0.2",
+    "@types/bytes": "^3.1.1",
+    "@types/cross-spawn": "^6.0.2",
+    "@types/eslint": "^8.2.1",
+    "@types/fs-extra": "^9.0.13",
+    "@types/glob": "^7.2.0",
+    "@types/js-yaml": "^4.0.5",
+    "@types/lodash-es": "^4.17.5",
+    "@types/rimraf": "^3.0.2",
+    "@types/tar": "^6.1.1",
+    "@typescript-eslint/eslint-plugin": "^5.8.0",
+    "@typescript-eslint/parser": "^5.8.0",
     "camelcase": "^6.2.0",
-    "eslint": "^7.17.0",
-    "eslint-config-airbnb-base": "^14.2.1",
+    "eslint": "^8.5.0",
+    "eslint-config-airbnb-base": "^15.0.0",
     "eslint-config-prettier": "^8.3.0",
-    "eslint-import-resolver-node": "^0.3.3",
-    "eslint-plugin-babel": "5",
-    "eslint-plugin-flowtype": "^5.8.0",
+    "eslint-import-resolver-node": "^0.3.6",
     "eslint-plugin-import": "^2.22.1",
     "eslint-plugin-jsx-a11y": "^6.4.1",
-    "eslint-plugin-prettier": "^3.3.0",
+    "eslint-plugin-prettier": "^4.0.0",
     "eslint-plugin-react": "^7.22.0",
-    "flow-bin": "^0.154.0",
-    "prettier": "^2.2.1"
-  },
-  "resolutions": {
-    "set-value": "2.0.1"
+    "eslint-plugin-sort-destructure-keys": "^1.4.0",
+    "eslint-plugin-sort-keys-fix": "^1.1.2",
+    "eslint-plugin-typescript-sort-keys": "^2.1.0",
+    "prettier": "^2.2.1",
+    "ts-node": "^10.4.0",
+    "typescript": "^4.5.4"
   },
   "scripts": {
-    "build": "babel-node tools/run build",
-    "publish": "babel-node tools/run publish",
-    "test": "babel-node tools/run publish",
-    "run": "babel-node tools/run"
-  }
+    "target": "node --loader ts-node/esm ./targets/run.ts"
+  },
+  "files": [
+    "dist/src"
+  ]
 }
