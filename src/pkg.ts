@@ -22,7 +22,6 @@ export interface PackageJson {
   engines?: Record<string, string>;
   license?: string;
   main?: string;
-  module?: string;
   name: string;
   peerDependencies?: Record<string, string>;
   private?: boolean;
