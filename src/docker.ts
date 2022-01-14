@@ -1,6 +1,8 @@
 import bytes from 'bytes';
+import fs from 'fs-extra';
 import isReachable from 'is-reachable';
 import moment from 'moment';
+import os from 'os';
 import path from 'path';
 
 import { spawn, SpawnOptions } from './cp.js';
@@ -9,6 +11,9 @@ import {
   dockerContainerRunDaemon,
 } from './docker.container.js';
 import { dockerNetworkConnect } from './docker.network.js';
+import { cmdExists, isArm, isMac } from './env.js';
+import { downloadFile } from './fetch.js';
+import { mountDmg, unmountDmg } from './macos.js';
 import { getCfg, getPkgName, getPkgScope } from './pkg.js';
 import { buildLog } from './run.js';
 import { getDevBranch, getVersion } from './version.js';
@@ -292,8 +297,12 @@ export async function dockerPullAndRunContainer(
 
   try {
     await dockerPull({ image, offline, testUrl });
-  } catch (err: any) {
-    buildLog(`docker pull failed (${err.message}), attempting to continue...`);
+  } catch (err) {
+    if (err instanceof Error) {
+      buildLog(
+        `docker pull failed (${err.message}), attempting to continue...`,
+      );
+    }
   }
   const { id } = await dockerContainerRunDaemon({ cmd, image, runArgs });
   if (network) {
@@ -317,7 +326,7 @@ export async function copyFilesFromDockerImage({
   filePaths,
   ignoreErrors,
   imageId,
-}: CopyFilesFromDockerImageConfig): Promise<any> {
+}: CopyFilesFromDockerImageConfig): Promise<void> {
   const container = await dockerContainerRunDaemon({
     cmd: ['read', '-p', 'pause'],
     image: imageId,
@@ -360,3 +369,84 @@ export async function copyFilesFromDockerImage({
     throw new Error('Some files failed to copy');
   }
 }
+
+export const dockerIsRunning = async () => {
+  try {
+    const result: string = (
+      await spawn('docker', ['info'], {
+        captureOutput: true,
+      })
+    ).output;
+    return !result.toLowerCase().includes('error');
+  } catch {
+    return false;
+  }
+};
+
+export const ensureDockerRunning = async (timeoutSeconds = 600) => {
+  if (!(await dockerIsRunning())) {
+    if (isMac()) {
+      buildLog('docker is not running, starting it...');
+      await spawn('open', ['-a', '/Applications/Docker.app']);
+
+      let attempts = 0;
+      while (!(await dockerIsRunning())) {
+        attempts += 1;
+        if (attempts % 5 === 0) {
+          process.stdout.write('.');
+        }
+        if (attempts > timeoutSeconds) {
+          throw new Error('Timeout starting docker');
+        }
+        await new Promise((resolve) => {
+          setTimeout(resolve, 1000);
+        });
+      }
+      if (attempts >= 5) {
+        process.stdout.write('\n');
+      }
+    } else {
+      throw new Error('Docker is not running, please start it manually');
+    }
+  }
+};
+
+export const ensureDockerInstalled = async () => {
+  if (!(await cmdExists('docker'))) {
+    if (isMac()) {
+      const dockerUrl = `https://desktop.docker.com/mac/main/${
+        isArm() ? 'arm64' : 'amd64'
+      }/Docker.dmg`;
+      const dockerDmg = path.join(os.tmpdir(), 'Docker.dmg');
+      buildLog(
+        `docker not found, downloading (${isArm() ? 'arm' : 'intel'})...`,
+      );
+      await downloadFile(dockerUrl, dockerDmg);
+
+      const dockerVolume = path.join(os.tmpdir(), 'Docker.volume');
+      const dockerApp = path.join(dockerVolume, 'Docker.app');
+      try {
+        buildLog('Mounting Docker.dmg...');
+        await mountDmg(dockerDmg, dockerVolume);
+
+        const dockerAppInstalled = path.resolve('/Applications', 'Docker.app');
+        buildLog('Copying to applications...');
+        await fs.copy(dockerApp, dockerAppInstalled);
+      } catch (err) {
+        buildLog(
+          'Failed to install docker automatically. Get it at https://docs.docker.com/get-docker/ and install manually.',
+        );
+        throw err;
+      } finally {
+        buildLog('Unmounting Docker.dmg...');
+        await unmountDmg(dockerVolume);
+        await fs.remove(dockerDmg);
+      }
+      buildLog('Docker installed!');
+    } else {
+      throw new Error(
+        'docker is not installed. Get it at https://docs.docker.com/get-docker/',
+      );
+    }
+  }
+};

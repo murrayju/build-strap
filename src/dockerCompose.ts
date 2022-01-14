@@ -21,6 +21,7 @@ import {
   DockerVolumeCreateOptions,
   dockerVolumeRm,
 } from './docker.volume.js';
+import { cmdExists } from './env.js';
 import { mapValuesAsync } from './maps.js';
 import { buildLog } from './run.js';
 
@@ -701,8 +702,10 @@ export async function dockerComposeTeardown({
               const name = val?.name || prefixName(key);
               try {
                 await dockerNetworkDelete(name);
-              } catch (err: any) {
-                buildLog(`Error deleting network '${name}': ${err.message}`);
+              } catch (err) {
+                if (err instanceof Error) {
+                  buildLog(`Error deleting network '${name}': ${err.message}`);
+                }
               }
             }),
           );
@@ -764,3 +767,11 @@ export async function dockerComposeRunService(
     url,
   };
 }
+
+export const ensureDockerComposeInstalled = async () => {
+  if (!(await cmdExists('docker-compose'))) {
+    throw new Error(
+      'docker-compose is not installed. Get it a https://docs.docker.com/compose/install/',
+    );
+  }
+};

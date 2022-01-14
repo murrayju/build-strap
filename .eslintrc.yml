@@ -63,6 +63,7 @@ rules:
   indent: 'off'
   max-classes-per-file: 'off'
   max-len: 'off'
+  no-await-in-loop: 'off'
   no-confusing-arrow: 'off'
   no-console:
   - warn

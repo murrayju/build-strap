@@ -91,6 +91,7 @@ export async function spawn(
       p.on('exit', handleExit);
 
       // only fires if we failed to spawn
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       p.on('error', (err: any) => {
         // Here we have a workaround that reverses a "feature" of cross-spawn on Windows. See:
         // https://github.com/moxystudio/node-cross-spawn/blob/master/lib/enoent.js#L23

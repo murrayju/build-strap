@@ -3,6 +3,9 @@ import glob from 'glob';
 import path from 'path';
 import rimraf from 'rimraf';
 
+import { resolveOnce } from './promise.js';
+import { buildLog } from './run.js';
+
 export const readDir = async (
   pattern: string,
   options?: glob.IOptions,
@@ -65,3 +68,60 @@ export const cleanDir = async (
       err ? reject(err) : resolve(),
     );
   });
+
+export const producedPathExists = async (
+  producer: () => Promise<string>,
+): Promise<boolean> => {
+  try {
+    const result = (await producer()).trim();
+    return !!result && fs.pathExists(result);
+  } catch {
+    return false;
+  }
+};
+
+export const copyIfMissing = async (src: string, dest: string) => {
+  if (!(await fs.pathExists(dest))) {
+    buildLog(`${dest} not found, copying...`);
+    await fs.ensureDir(path.dirname(dest));
+    await fs.copy(src, dest);
+  }
+};
+
+type StringGenFn = () => string | Promise<string>;
+
+const resolveStringGen = async (
+  content: string | StringGenFn,
+): Promise<string> => (typeof content === 'function' ? content() : content);
+
+export const writeIfMissing = async (
+  dest: string,
+  content: string | StringGenFn,
+) => {
+  if (!(await fs.pathExists(dest))) {
+    buildLog(`${dest} not found, writing...`);
+    await fs.ensureDir(path.dirname(dest));
+    await fs.writeFile(dest, await resolveStringGen(content));
+    return true;
+  }
+  return false;
+};
+
+export const appendIfMissing = async (
+  dest: string,
+  content: string | StringGenFn,
+  testContent?: string | StringGenFn,
+) => {
+  if (!(await writeIfMissing(dest, content))) {
+    const existingContent = await fs.readFile(dest, 'utf8');
+    const getContent = resolveOnce(() => resolveStringGen(content));
+    if (
+      !existingContent.includes(
+        await (testContent ? resolveStringGen(testContent) : getContent()),
+      )
+    ) {
+      buildLog(`${dest} not yet updated, appending...`);
+      await fs.appendFile(dest, await getContent());
+    }
+  }
+};

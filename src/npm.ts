@@ -80,10 +80,12 @@ export async function npmGetVersions(
         })
       ).stdout.trim(),
     );
-  } catch (err: any) {
-    buildLog(
-      `warning: failed to find existing package for ${packageName} in npm registry: ${err.message}`,
-    );
+  } catch (err) {
+    if (err instanceof Error) {
+      buildLog(
+        `warning: failed to find existing package for ${packageName} in npm registry: ${err.message}`,
+      );
+    }
     return [];
   }
 }
