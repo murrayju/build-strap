@@ -12,6 +12,7 @@ export * from './dockerCompose.js';
 export * from './fs.js';
 export * from './gh.js';
 export * from './git.js';
+export * from './macos.js';
 export * from './npm.js';
 export * from './pkg.js';
 export * from './publish.js';
