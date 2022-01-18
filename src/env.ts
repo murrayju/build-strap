@@ -3,7 +3,7 @@ import os from 'os';
 import path from 'path';
 
 import { spawn } from './cp.js';
-import { appendIfMissing } from './fs.js';
+import { appendIfMissing, StringGenFn } from './fs.js';
 
 const boolCache = new Map<string, boolean>();
 const cacheBool = (key: string, fn: () => boolean): boolean => {
@@ -57,7 +57,7 @@ export const shellEnvFile = (): string | null =>
 export const whichCmd = async (cmd: string): Promise<null | string> => {
   const binPath = (
     await spawn('which', [cmd], { captureOutput: true })
-  ).output.trim();
+  ).stdout.trim();
   if (!binPath || !(await fs.pathExists(binPath))) {
     return null;
   }
@@ -99,19 +99,26 @@ export const readShellEnvVar = async (
   }
 };
 
-export const appendEnvVarToProfile = async (
-  name: string,
-  value: string,
-  { envFile = shellEnvFile() }: ReadShellEnvVarOptions = {},
+export interface AppendToEnvProfileOptions {
+  envFile?: string | null;
+  testContent?: string | StringGenFn;
+}
+
+export const appendToEnvProfile = async (
+  content: string | StringGenFn,
+  { envFile = shellEnvFile(), testContent }: AppendToEnvProfileOptions = {},
 ) => {
   if (!envFile) {
     throw new Error('envFile must be set');
   }
-  await appendIfMissing(
-    path.join(os.homedir(), envFile),
-    `\nexport ${name}=${value}`,
-  );
+  await appendIfMissing(envFile, content, testContent);
 };
+
+export const appendEnvVarToProfile = async (
+  name: string,
+  value: string,
+  { envFile = shellEnvFile() }: ReadShellEnvVarOptions = {},
+) => appendToEnvProfile(`\nexport ${name}=${value}`, { envFile });
 
 export const ensureEnvVarValue = async (
   name: string,
@@ -134,5 +141,11 @@ export const ensureEnvVarSet = async (
     const newValue = await getValue();
     await appendEnvVarToProfile(name, newValue);
     process.env[name] = newValue;
+  }
+};
+
+export const ensureProcessPathEnvIncludes = (binPath: string) => {
+  if (!process.env.PATH?.includes(binPath)) {
+    process.env.PATH = `${binPath}:${process.env.PATH}`;
   }
 };

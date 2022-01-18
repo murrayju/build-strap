@@ -2,7 +2,7 @@ import { throttle } from 'lodash-es';
 
 import { spawn } from './cp.js';
 
-type DockerVolumeInspectOutput = Record<string, any>;
+type DockerVolumeInspectOutput = Record<string, unknown>;
 
 export interface DockerVolume {
   driver: string;
@@ -110,9 +110,11 @@ export async function dockerVolumeRm(
   const ids = Array.isArray(id) ? id : [id];
   try {
     await spawn('docker', ['volume', 'rm', ...ids]);
-  } catch (e: any) {
+  } catch (e) {
     if (!ignoreErrors) {
-      throw new Error(`Failed to remove volume(s): ${e.message}`);
+      throw new Error(
+        `Failed to remove volume(s): ${e instanceof Error && e.message}`,
+      );
     }
   }
 }

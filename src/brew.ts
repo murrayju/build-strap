@@ -3,8 +3,12 @@ import os from 'os';
 import path from 'path';
 
 import { spawn, SpawnOptions } from './cp.js';
-import { cmdExists } from './env.js';
-import { appendIfMissing } from './fs.js';
+import {
+  appendToEnvProfile,
+  AppendToEnvProfileOptions,
+  cmdExists,
+  ensureProcessPathEnvIncludes,
+} from './env.js';
 
 const brewPath = async (): Promise<string> => {
   for (const testPath of [
@@ -28,15 +32,10 @@ const brewPathExists = async () => {
   }
 };
 
-const appendBrewShellEnv = async () => {
+const appendBrewShellEnv = async (opts?: AppendToEnvProfileOptions) => {
   const brewDir = path.dirname(await brewPath());
-  await appendIfMissing(
-    path.join(os.homedir(), '.zprofile'),
-    `\neval "$(${brewDir}/brew shellenv)"`,
-  );
-  if (!process.env.PATH?.includes(brewDir)) {
-    process.env.PATH = `${brewDir}:${process.env.PATH}`;
-  }
+  await appendToEnvProfile(`\neval "$(${brewDir}/brew shellenv)"`, opts);
+  ensureProcessPathEnvIncludes(brewDir);
 };
 
 export const ensureBrewInstalled = async () => {

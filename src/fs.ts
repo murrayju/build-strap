@@ -88,7 +88,7 @@ export const copyIfMissing = async (src: string, dest: string) => {
   }
 };
 
-type StringGenFn = () => string | Promise<string>;
+export type StringGenFn = () => string | Promise<string>;
 
 const resolveStringGen = async (
   content: string | StringGenFn,

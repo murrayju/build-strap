@@ -60,7 +60,7 @@ export interface PublishConfiguration extends CreateArtifactOptions {
   npmPath?: string; // (optional) Path to npm executable
   npmSkipExisting?: boolean; // (optional) if true, don't error when artifact already exists (skip publish)
   npmTag?: string; // (optional) tag to apply to npm package
-  prePublishFn?: () => any; // (optional) Callback to invoke before publishing
+  prePublishFn?: () => void | Promise<void>; // (optional) Callback to invoke before publishing
 }
 
 // tgz the distDir, and copy it to the outDir
