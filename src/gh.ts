@@ -1,4 +1,5 @@
 import fs from 'fs-extra';
+import path from 'path';
 
 import { spawn, SpawnOptions } from './cp.js';
 import { buildLog } from './run.js';
@@ -11,6 +12,14 @@ export const ghRepoClone = async (repo: string, repoDir: string) => {
   await gh(['repo', 'clone', repo, repoDir], {
     stdio: 'inherit',
   });
+};
+
+export const ensureGhRepo = async (repo: string, rootDir = '.') => {
+  const repoDir = path.join(rootDir, repo);
+  if (!(await fs.pathExists(repoDir))) {
+    buildLog(`${repo} not found, cloning...`);
+    await ghRepoClone(repo, repoDir);
+  }
 };
 
 export const ensureGhAuthLogin = async ({
