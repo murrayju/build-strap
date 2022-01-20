@@ -4,8 +4,8 @@ import path from 'path';
 
 import { spawn, SpawnOptions } from './cp.js';
 import {
-  appendToEnvProfile,
-  AppendToEnvProfileOptions,
+  appendToEnv,
+  AppendToEnvOptions,
   cmdExists,
   ensureProcessPathEnvIncludes,
 } from './env.js';
@@ -32,9 +32,9 @@ const brewPathExists = async () => {
   }
 };
 
-const appendBrewShellEnv = async (opts?: AppendToEnvProfileOptions) => {
+const appendBrewShellEnv = async (opts?: AppendToEnvOptions) => {
   const brewDir = path.dirname(await brewPath());
-  await appendToEnvProfile(`\neval "$(${brewDir}/brew shellenv)"`, opts);
+  await appendToEnv(`\neval "$(${brewDir}/brew shellenv)"`, opts);
   ensureProcessPathEnvIncludes(brewDir);
 };
 

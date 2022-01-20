@@ -116,14 +116,14 @@ export const readShellEnvVar = async (
   }
 };
 
-export interface AppendToEnvProfileOptions {
+export interface AppendToEnvOptions {
   envFile?: string | null;
   testContent?: string | StringGenFn;
 }
 
-export const appendToEnvProfile = async (
+export const appendToEnv = async (
   content: string | StringGenFn,
-  { envFile = shellEnvFile(), testContent }: AppendToEnvProfileOptions = {},
+  { envFile = shellEnvFile(), testContent }: AppendToEnvOptions = {},
 ) => {
   if (!envFile) {
     throw new Error('envFile must be set');
@@ -131,11 +131,11 @@ export const appendToEnvProfile = async (
   await appendIfMissing(envFile, content, testContent);
 };
 
-export const appendEnvVarToProfile = async (
+export const appendEnvVar = async (
   name: string,
   value: string,
   { envFile = shellEnvFile() }: ReadShellEnvVarOptions = {},
-) => appendToEnvProfile(`\nexport ${name}=${value}`, { envFile });
+) => appendToEnv(`\nexport ${name}=${value}`, { envFile });
 
 export const ensureEnvVarValue = async (
   name: string,
@@ -144,7 +144,7 @@ export const ensureEnvVarValue = async (
 ) => {
   const currentValue = await readShellEnvVar(name, opts);
   if (currentValue !== value) {
-    await appendEnvVarToProfile(name, value, opts);
+    await appendEnvVar(name, value, opts);
   }
   process.env[name] = value;
 };
@@ -157,7 +157,7 @@ export const ensureEnvVarSet = async (
   const currentValue = await readShellEnvVar(name, opts);
   if (!currentValue) {
     const newValue = await getValue();
-    await appendEnvVarToProfile(name, newValue, opts);
+    await appendEnvVar(name, newValue, opts);
     process.env[name] = newValue;
   }
 };
