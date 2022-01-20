@@ -46,6 +46,18 @@ export const shellEnvFile = (): string | null =>
   cacheString('shellEnvFile', () => {
     switch (shellType()) {
       case 'zsh':
+        return path.join(os.homedir(), '.zshrc');
+      case 'bash':
+        return path.join(os.homedir(), '.bashrc');
+      default:
+        return null;
+    }
+  });
+
+export const shellProfile = (): string | null =>
+  cacheString('shellProfile', () => {
+    switch (shellType()) {
+      case 'zsh':
         return path.join(os.homedir(), '.zprofile');
       case 'bash':
         return path.join(os.homedir(), '.bash_profile');
@@ -81,7 +93,7 @@ interface ReadShellEnvVarOptions {
 export const readShellEnvVar = async (
   name: string,
   {
-    refreshEnv = false,
+    refreshEnv = true,
     envFile = shellEnvFile(),
     shell = os.userInfo().shell,
   }: ReadShellEnvVarOptions = {},
@@ -140,11 +152,12 @@ export const ensureEnvVarValue = async (
 export const ensureEnvVarSet = async (
   name: string,
   getValue: () => Promise<string>,
+  opts?: ReadShellEnvVarOptions,
 ) => {
-  const currentValue = await readShellEnvVar(name);
+  const currentValue = await readShellEnvVar(name, opts);
   if (!currentValue) {
     const newValue = await getValue();
-    await appendEnvVarToProfile(name, newValue);
+    await appendEnvVarToProfile(name, newValue, opts);
     process.env[name] = newValue;
   }
 };
