@@ -1,4 +1,5 @@
 export * from './ant.js';
+export * from './aws.js';
 export * from './brew.js';
 export * from './cert.js';
 export * from './clean.js';
