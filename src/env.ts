@@ -55,9 +55,14 @@ export const shellEnvFile = (): string | null =>
   });
 
 export const whichCmd = async (cmd: string): Promise<null | string> => {
-  const binPath = (
-    await spawn('which', [cmd], { captureOutput: true })
-  ).stdout.trim();
+  const result = await spawn('which', [cmd], {
+    captureOutput: true,
+    rejectOnErrorCode: false,
+  });
+  if (result.code) {
+    return null;
+  }
+  const binPath = result.stdout.trim();
   if (!binPath || !(await fs.pathExists(binPath))) {
     return null;
   }
