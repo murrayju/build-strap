@@ -15,7 +15,7 @@ jobs:
       env:
         NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
     - name: Capture version
-      run: echo "VERSION=$(./yarn run --silent target printVersion --buildNum=$GITHUB_RUN_NUMBER --silence-buildLog 2> /dev/null)" >> $GITHUB_ENV
+      run: echo "VERSION=$(./yarn run --silent target printNpmVersion --buildNum=$GITHUB_RUN_NUMBER --silence-buildLog 2> /dev/null)" >> $GITHUB_ENV
     - name: GH Release
       uses: softprops/action-gh-release@v1
       if: ${{ github.ref == 'refs/heads/master' }}
