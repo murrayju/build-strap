@@ -16,7 +16,7 @@ jobs:
         NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
     - name: GH Release
       uses: softprops/action-gh-release@v1
-      if: {{ github.ref == 'refs/heads/master' }}
+      if: ${{ github.ref == 'refs/heads/master' }}
       with:
         generate_release_notes: true
         files: out/*.tgz
