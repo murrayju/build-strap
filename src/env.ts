@@ -82,7 +82,7 @@ export const whichCmd = async (cmd: string): Promise<null | string> => {
 };
 
 export const cmdExists = async (cmd: string): Promise<boolean> =>
-  !!whichCmd(cmd);
+  !!(await whichCmd(cmd));
 
 interface ReadShellEnvVarOptions {
   envFile?: string | null;
