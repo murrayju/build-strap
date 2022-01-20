@@ -1,4 +1,5 @@
 import fs from 'fs-extra';
+import path from 'path';
 
 import { spawn, SpawnOptions } from './cp.js';
 import { buildLog } from './run.js';
@@ -13,10 +14,34 @@ export const ghRepoClone = async (repo: string, repoDir: string) => {
   });
 };
 
-export const ensureGhAuthLogin = async (
-  host = 'github.com',
-  scopes: string | null = null,
+export const ensureGhRepo = async (
+  repo: string,
+  {
+    rootDir = '.',
+    targetDir,
+    targetName,
+  }: {
+    rootDir?: string;
+    targetDir?: string;
+    targetName?: string;
+  } = {},
 ) => {
+  const repoDir =
+    targetDir ||
+    path.join(rootDir, targetName || repo.split('/').pop() || repo);
+  if (!(await fs.pathExists(repoDir))) {
+    buildLog(`${repo} not found, cloning into ${repoDir}...`);
+    await ghRepoClone(repo, repoDir);
+  }
+};
+
+export const ensureGhAuthLogin = async ({
+  host = 'github.com',
+  scopes,
+}: {
+  host?: string;
+  scopes?: string;
+} = {}) => {
   const configured =
     (await gh(['auth', 'status'], { rejectOnErrorCode: false })).code === 0;
   if (!configured) {
@@ -30,10 +55,13 @@ export const ensureGhAuthLogin = async (
   }
 };
 
-export const ensureGhSshKeyAdded = async (
-  privateKeyPath?: string,
-  keyTitle?: string,
-) => {
+export const ensureGhSshKeyAdded = async ({
+  keyTitle,
+  privateKeyPath,
+}: {
+  keyTitle?: string;
+  privateKeyPath?: string;
+} = {}) => {
   let listResult = await gh(['ssh-key', 'list'], {
     captureOutput: true,
     rejectOnErrorCode: false,

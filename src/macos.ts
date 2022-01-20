@@ -22,7 +22,7 @@ export const unmountDmg = async (mountPath: string) => {
 };
 
 export const ensureXcodeCmdInstalled = async (ignoreNonMac = true) => {
-  if (isMac()) {
+  if (!isMac()) {
     if (!ignoreNonMac) {
       throw new Error('Cannot install Xcode on non-macOS');
     }

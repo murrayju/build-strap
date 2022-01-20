@@ -8,7 +8,15 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - run: ./bs publish --buildNum=$GITHUB_RUN_NUMBER
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Build and NPM Publish
+      run: ./bs publish --buildNum=$GITHUB_RUN_NUMBER
       env:
         NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+    - name: GH Release
+      uses: softprops/action-gh-release@v1
+      if: ${{ github.ref == 'refs/heads/master' }}
+      with:
+        generate_release_notes: true
+        files: out/*.tgz

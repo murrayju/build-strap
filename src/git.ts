@@ -2,20 +2,23 @@ import { spawn, SpawnOptions } from './cp.js';
 import { userQuestion } from './prompt.js';
 import { buildLog } from './run.js';
 
-export const git = async (
+export const git = async (args: string[], opts?: SpawnOptions) =>
+  spawn('git', args, opts);
+
+export const gitOutput = async (
   args: string[],
   opts?: SpawnOptions,
 ): Promise<string> =>
-  (await spawn('git', args, { captureOutput: true, ...opts })).stdout.trim();
+  (await git(args, { captureOutput: true, ...opts })).stdout.trim();
 
 export async function gitBranch(): Promise<string> {
-  return (await git(['symbolic-ref', '--short', 'HEAD']))
+  return (await gitOutput(['symbolic-ref', '--short', 'HEAD']))
     .replace(/[_+/]/g, '-')
     .trim();
 }
 
 export async function gitRevId(): Promise<string> {
-  return (await git(['rev-parse', '--short=12', 'HEAD']))
+  return (await gitOutput(['rev-parse', '--short=12', 'HEAD']))
     .replace(/[+]/g, '')
     .trim();
 }
@@ -37,11 +40,11 @@ export async function gitInfo(noCache = false): Promise<GitInfo> {
 }
 
 export const ensureGitLfsInstalled = async () => {
-  await git(['lfs', 'install'], { stdio: 'inherit' });
+  await git(['lfs', 'install']);
 };
 
 export const gitConfigRead = async (key: string, global = true) =>
-  git(['config', ...(global ? ['--global'] : []), key], {
+  gitOutput(['config', ...(global ? ['--global'] : []), key], {
     rejectOnErrorCode: false,
   });
 

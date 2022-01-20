@@ -450,3 +450,49 @@ export const ensureDockerInstalled = async () => {
     }
   }
 };
+
+export const ensureDockerForMacConfigured = async (
+  desiredConfig?: null | Record<string, unknown>,
+) => {
+  if (isMac()) {
+    if (!desiredConfig) {
+      buildLog('Skipping docker configuration due to empty config value');
+      return;
+    }
+    const configPath = path.join(
+      os.homedir(),
+      '/Library/Group Containers/group.com.docker/settings.json',
+    );
+    await fs.ensureDir(path.dirname(configPath));
+    if (!(await fs.pathExists(configPath))) {
+      // Must run Docker at least once to create the config file
+      await ensureDockerRunning();
+    }
+    if (!(await fs.pathExists(configPath))) {
+      throw new Error('Failed to locate the Docker config file');
+    }
+    const existingConfig = await fs.readJson(configPath);
+    if (
+      !Object.entries(desiredConfig).every(
+        ([key, value]) => existingConfig[key] === value,
+      )
+    ) {
+      buildLog('Adjusting Docker config...');
+      await fs.writeJson(
+        configPath,
+        {
+          ...existingConfig,
+          ...desiredConfig,
+        },
+        { spaces: 2 },
+      );
+
+      if (await dockerIsRunning()) {
+        // Restart the Docker app
+        buildLog('Killing Docker...');
+        await spawn('osascript', ['-e', `quit app "Docker"`]);
+        await ensureDockerRunning();
+      }
+    }
+  }
+};
