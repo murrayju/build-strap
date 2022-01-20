@@ -40,7 +40,7 @@ export async function gitInfo(noCache = false): Promise<GitInfo> {
 }
 
 export const ensureGitLfsInstalled = async () => {
-  await git(['lfs', 'install'], { stdio: 'inherit' });
+  await git(['lfs', 'install']);
 };
 
 export const gitConfigRead = async (key: string, global = true) =>
