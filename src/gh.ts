@@ -13,10 +13,13 @@ export const ghRepoClone = async (repo: string, repoDir: string) => {
   });
 };
 
-export const ensureGhAuthLogin = async (
+export const ensureGhAuthLogin = async ({
   host = 'github.com',
-  scopes: string | null = null,
-) => {
+  scopes,
+}: {
+  host?: string;
+  scopes?: string;
+} = {}) => {
   const configured =
     (await gh(['auth', 'status'], { rejectOnErrorCode: false })).code === 0;
   if (!configured) {
@@ -30,10 +33,13 @@ export const ensureGhAuthLogin = async (
   }
 };
 
-export const ensureGhSshKeyAdded = async (
-  privateKeyPath?: string,
-  keyTitle?: string,
-) => {
+export const ensureGhSshKeyAdded = async ({
+  keyTitle,
+  privateKeyPath,
+}: {
+  keyTitle?: string;
+  privateKeyPath?: string;
+} = {}) => {
   let listResult = await gh(['ssh-key', 'list'], {
     captureOutput: true,
     rejectOnErrorCode: false,
