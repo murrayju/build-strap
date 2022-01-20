@@ -14,10 +14,23 @@ export const ghRepoClone = async (repo: string, repoDir: string) => {
   });
 };
 
-export const ensureGhRepo = async (repo: string, rootDir = '.') => {
-  const repoDir = path.join(rootDir, repo);
+export const ensureGhRepo = async (
+  repo: string,
+  {
+    rootDir = '.',
+    targetDir,
+    targetName,
+  }: {
+    rootDir?: string;
+    targetDir?: string;
+    targetName?: string;
+  } = {},
+) => {
+  const repoDir =
+    targetDir ||
+    path.join(rootDir, targetName || repo.split('/').pop() || repo);
   if (!(await fs.pathExists(repoDir))) {
-    buildLog(`${repo} not found, cloning...`);
+    buildLog(`${repo} not found, cloning into ${repoDir}...`);
     await ghRepoClone(repo, repoDir);
   }
 };
