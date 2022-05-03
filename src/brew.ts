@@ -50,9 +50,9 @@ export const ensureBrewInstalled = async () => {
       '/bin/bash',
       [
         '-c',
-        '$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)',
+        '"$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"',
       ],
-      { stdio: 'inherit' },
+      { shell: true, stdio: 'inherit' },
     );
     if (!(await cmdExists('brew'))) {
       if (!(await brewPathExists())) {
