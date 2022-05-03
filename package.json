@@ -37,7 +37,7 @@
     "cross-spawn": "^7.0.3",
     "fs-extra": "^10.0.0",
     "get-port": "^6.0.0",
-    "glob": "^7.2.0",
+    "glob": "^8.0.1",
     "is-reachable": "^5.1.1",
     "js-yaml": "^4.1.0",
     "lodash-es": "^4.17.21",
