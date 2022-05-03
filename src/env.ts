@@ -108,6 +108,10 @@ export const readShellEnvVar = async (
         ['-c', `${refreshEnv ? `source ${envFile} && ` : ''}printenv ${name}`],
         {
           captureOutput: true,
+          env: {
+            ...process.env,
+            DISABLE_AUTO_UPDATE: 'true',
+          },
         },
       )
     ).stdout.trim();
