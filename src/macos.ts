@@ -45,3 +45,17 @@ export const ensureXcodeCmdInstalled = async (ignoreNonMac = true) => {
     });
   }
 };
+
+export const ensureRosettaInstalled = async (ignoreNonMac = true) => {
+  if (!isMac()) {
+    if (!ignoreNonMac) {
+      throw new Error('Cannot install Rosetta on non-macOS');
+    }
+    return;
+  }
+
+  if (!(await fs.pathExists('/usr/libexec/rosetta'))) {
+    buildLog('Installing Rosetta...');
+    await spawn('softwareupdate', ['--install-rosetta', '--agree-to-license']);
+  }
+};
