@@ -237,6 +237,13 @@
     "@types/glob" "*"
     "@types/node" "*"
 
+"@types/stream-counter@^1.0.0":
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/@types/stream-counter/-/stream-counter-1.0.0.tgz#a55247a6538f7f7052df2fdb1a759706c99cab4e"
+  integrity sha512-OUBDvuBKN+JScvB8DzS1prFas7AsFBbjY0lsW/zY3rRLXXK4D7IMWA4OclSev+dlDv80wG6V3xXIVDrLQijX2g==
+  dependencies:
+    "@types/node" "*"
+
 "@types/tar@^6.1.1":
   version "6.1.1"
   resolved "https://registry.yarnpkg.com/@types/tar/-/tar-6.1.1.tgz#ab341ec1f149d7eb2a4f4ded56ff85f0d4fe7cb5"
