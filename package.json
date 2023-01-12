@@ -1,6 +1,6 @@
 {
   "name": "build-strap",
-  "version": "5.0.3",
+  "version": "5.0.4",
   "description": "Node scripts for building things",
   "license": "MIT",
   "authors": [
