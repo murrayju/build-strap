@@ -28,7 +28,7 @@ export async function createArtifact({
   outDir,
 }: CreateArtifactOptions): Promise<Artifact> {
   const version = await getVersion();
-  const name = getPkgSafeName();
+  const name = getPkgSafeName() || '';
 
   buildLog(`gzipping ${name} v${version.info}...`);
 
