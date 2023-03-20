@@ -74,3 +74,14 @@ export function getPkgScope(): null | string {
   const pkgName = getPkgName(true);
   return pkgName.match(pkgNameRegex)?.[1] || null;
 }
+
+export function getPkgSafeName(): null | string {
+  const pkgName = getPkgName(true);
+  const match = pkgName.match(pkgNameRegex);
+  if (!match) {
+    return null;
+  }
+  const [, scope, name] = match;
+  const safeScope = scope?.slice(1);
+  return safeScope ? `${safeScope}-${name}` : name;
+}

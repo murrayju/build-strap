@@ -2,7 +2,7 @@ import fs from 'fs-extra';
 import path from 'path';
 
 import { NpmConfig, NpmCreds, npmPublish } from './npm.js';
-import { getPkgName } from './pkg.js';
+import { getPkgSafeName } from './pkg.js';
 import { buildLog, run } from './run.js';
 import { ArtifactInfo, tgzDir } from './tgz.js';
 import { getVersion, type Version } from './version.js';
@@ -28,7 +28,7 @@ export async function createArtifact({
   outDir,
 }: CreateArtifactOptions): Promise<Artifact> {
   const version = await getVersion();
-  const name = getPkgName();
+  const name = getPkgSafeName();
 
   buildLog(`gzipping ${name} v${version.info}...`);
 
