@@ -147,7 +147,7 @@ export async function npmPublish({
 }: NpmPublishOptions = {}): Promise<boolean> {
   const creds = npmCreds || envNpmCreds;
   const authToken = npmAuthToken || process.env.NPM_TOKEN;
-  const name = getPkgName();
+  const name = getPkgName(true);
   const { access, dryRun, publish, registry } = npmConfig || getNpmConfig();
   if (!publish) {
     buildLog(

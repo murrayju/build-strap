@@ -11,7 +11,7 @@ import {
   npmGetVersions,
   npmWriteRc,
 } from './npm.js';
-import { getPkg, getPkgName } from './pkg.js';
+import { getPkg, getPkgName, getPkgSafeName } from './pkg.js';
 import { buildLog } from './run.js';
 import { generateFileHash } from './tgz.js';
 import { getDevBranch, getVersion } from './version.js';
@@ -153,7 +153,6 @@ export async function yarnPublish({
 }: YarnPublishOptions = {}): Promise<boolean> {
   const creds = npmCreds || envNpmCreds;
   const authToken = npmAuthToken || process.env.NPM_TOKEN;
-  const name = getPkgName();
   const { access, publish, registry } = npmConfig || getNpmConfig();
   if (!publish) {
     buildLog(
@@ -182,7 +181,7 @@ export async function yarnPublish({
       registry,
     });
   }
-  const existing = await npmGetVersions(name, npmPath);
+  const existing = await npmGetVersions(getPkgName(true), npmPath);
   const { branch, isRelease, npm: npmVersion } = await getVersion();
   if (existing.includes(npmVersion)) {
     if (skipExisting) {
@@ -237,7 +236,7 @@ export async function yarnPack({
 }: YarnPackOptions): Promise<string> {
   await fs.ensureDir(destination);
   const version = await getVersion();
-  const name = getPkgName();
+  const name = getPkgSafeName();
   const filename = path.resolve(destination, `${name}-${version.npm}.tgz`);
   await yarn({
     args: ['pack', ...(destination ? ['--filename', filename] : [])],

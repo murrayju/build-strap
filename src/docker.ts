@@ -201,7 +201,7 @@ interface DockerLoginOptions {
 export async function dockerLogin({
   password = process.env.DOCKER_PASSWORD,
   registry = process.env.DOCKER_REGISTRY,
-  user = process.env.DOCKER_PASSWORD,
+  user = process.env.DOCKER_USER,
 }: DockerLoginOptions = {}): Promise<void> {
   const reg = registry || getDockerConfig().registry;
   await spawn(
