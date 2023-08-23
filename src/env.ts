@@ -105,7 +105,12 @@ export const readShellEnvVar = async (
     return (
       await spawn(
         shell,
-        ['-c', `${refreshEnv ? `source ${envFile} && ` : ''}printenv ${name}`],
+        [
+          '-c',
+          `${
+            refreshEnv ? `source ${envFile} > /dev/null 2>&1  && ` : ''
+          }printenv ${name}`,
+        ],
         {
           captureOutput: true,
           env: {
