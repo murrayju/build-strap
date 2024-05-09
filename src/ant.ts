@@ -21,7 +21,7 @@ export interface AntSpawnOptions {
  * @param {AntSpawnOptions} options
  */
 export async function ant(target: string, opts?: AntSpawnOptions) {
-  const { properties = [], args = [], spawnOptions } = opts || {};
+  const { args = [], properties = [], spawnOptions } = opts || {};
 
   await spawn(
     'ant',

@@ -40,7 +40,7 @@ const cacheString = (key: string, fn: () => string | null): string => {
 };
 
 export const shellType = (): string | null =>
-  cacheString('shellType', () => os.userInfo().shell.split('/').pop() || null);
+  cacheString('shellType', () => os.userInfo().shell?.split('/').pop() || null);
 
 export const shellEnvFile = (): string | null =>
   cacheString('shellEnvFile', () => {
@@ -87,19 +87,22 @@ export const cmdExists = async (cmd: string): Promise<boolean> =>
 interface ReadShellEnvVarOptions {
   envFile?: string | null;
   refreshEnv?: boolean;
-  shell?: string;
+  shell?: string | null;
 }
 
 export const readShellEnvVar = async (
   name: string,
   {
-    refreshEnv = true,
     envFile = shellEnvFile(),
+    refreshEnv = true,
     shell = os.userInfo().shell,
   }: ReadShellEnvVarOptions = {},
 ): Promise<string | null> => {
   if (refreshEnv && (!envFile || !(await fs.pathExists(envFile)))) {
     throw new Error(`Could not find shell env file: ${envFile}`);
+  }
+  if (!shell) {
+    throw new Error('Could not determine shell');
   }
   try {
     return (

@@ -3,7 +3,8 @@ import fs from 'fs-extra';
 import path from 'path';
 import { Readable } from 'stream';
 import StreamCounter from 'stream-counter';
-import tar from 'tar';
+import { create } from 'tar';
+import { TarOptionsWithAliases } from 'tar/dist/commonjs/options.js';
 
 import { buildLog } from './run.js';
 
@@ -16,7 +17,7 @@ export type ArtifactInfo = {
 };
 
 const generateHash = async (
-  stream: Readable,
+  stream: Pick<Readable, 'pipe'>,
   type: 'md5' | 'sha1' | 'sha512',
 ): Promise<string> =>
   new Promise((resolve, reject) => {
@@ -36,7 +37,7 @@ export const generateFileHash = async (
   type: 'md5' | 'sha1' | 'sha512',
 ): Promise<string> => generateHash(fs.createReadStream(filePath), type);
 
-const countBytes = async (stream: Readable): Promise<number> =>
+const countBytes = async (stream: Pick<Readable, 'pipe'>): Promise<number> =>
   new Promise((resolve, reject) => {
     const counter = new StreamCounter();
     stream
@@ -46,7 +47,10 @@ const countBytes = async (stream: Readable): Promise<number> =>
       .on('error', (err: Error) => reject(err));
   });
 
-const writeStreamToFile = async (stream: Readable, filePath: string) =>
+const writeStreamToFile = async (
+  stream: Pick<Readable, 'pipe'>,
+  filePath: string,
+) =>
   new Promise<void>((resolve, reject) => {
     stream
       .pipe(fs.createWriteStream(filePath))
@@ -60,7 +64,7 @@ const writeStreamToFile = async (stream: Readable, filePath: string) =>
 // Take the given file (path or stream) and compute metadata for it.
 // md5 + sha hashes, and size in bytes
 export async function getArtifactInfo(
-  artifact: string | Readable,
+  artifact: string | Pick<Readable, 'pipe'>,
 ): Promise<ArtifactInfo> {
   // make it into a stream
   const stream =
@@ -79,10 +83,10 @@ export async function getArtifactInfo(
 export async function tgzDir(
   srcDir: string,
   outPath: string,
-  options?: tar.CreateOptions,
+  options?: TarOptionsWithAliases,
 ): Promise<ArtifactInfo> {
   await fs.ensureDir(path.dirname(outPath));
-  const tgzStream = tar.c(
+  const tgzStream = create(
     {
       cwd: srcDir,
       gzip: true,

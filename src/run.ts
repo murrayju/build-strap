@@ -47,24 +47,24 @@ export interface RunCliOptions<Args extends string[], Result> {
 }
 
 export async function runCli<Args extends string[], Result>({
-  resolveFn = async (path: string) => import(`./${path}.js`),
-  defaultAction = 'build',
   argv = process.argv,
+  defaultAction = 'build',
   passthroughArgv = false,
+  resolveFn = async (path: string) => import(`./${path}.js`),
 }: RunCliOptions<Args, Result> = {}): Promise<Result> {
   const module =
     argv.length > 2
       ? await resolveFn(argv[2])
       : typeof defaultAction === 'string'
-      ? await resolveFn(defaultAction)
-      : defaultAction;
+        ? await resolveFn(defaultAction)
+        : defaultAction;
   const args = Array.isArray(passthroughArgv)
     ? passthroughArgv.includes(argv[2] || (defaultAction as string))
       ? argv.slice(3)
       : []
     : passthroughArgv
-    ? argv.slice(3)
-    : [];
+      ? argv.slice(3)
+      : [];
   return run(module, ...(args as Args)).catch((err) => {
     console.error((err && err.stack) || err);
     process.exit(1);

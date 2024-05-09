@@ -28,8 +28,8 @@ export async function getRepoType(): Promise<RepoType> {
     (fs.existsSync('./.git')
       ? RepoType.git
       : fs.existsSync('./.hg')
-      ? RepoType.hg
-      : RepoType.unknown)
+        ? RepoType.hg
+        : RepoType.unknown)
   );
 }
 
@@ -63,8 +63,8 @@ export async function getIsRelease(
   return releaseOverride != null
     ? releaseOverride
     : process.argv.includes('--force-release-version')
-    ? true
-    : branch === getReleaseBranch();
+      ? true
+      : branch === getReleaseBranch();
 }
 
 let cacheVersion = true;

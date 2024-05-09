@@ -1,20 +1,15 @@
 import fs from 'fs-extra';
-import glob from 'glob';
+import { glob, GlobOptions, GlobOptionsWithFileTypesUnset } from 'glob';
 import path from 'path';
-import rimraf from 'rimraf';
+import { rimraf } from 'rimraf';
 
 import { resolveOnce } from './promise.js';
 import { buildLog } from './run.js';
 
 export const readDir = async (
   pattern: string,
-  options?: glob.IOptions,
-): Promise<string[]> =>
-  new Promise((resolve, reject) => {
-    glob(pattern, options || {}, (err: Error | null, result: string[]) =>
-      err ? reject(err) : resolve(result),
-    );
-  });
+  options?: GlobOptionsWithFileTypesUnset,
+): Promise<string[]> => glob(pattern, options);
 
 export const moveDir = async (
   source: string,
@@ -23,7 +18,6 @@ export const moveDir = async (
   const dirs = await readDir('**/*.*', {
     cwd: source,
     dot: true,
-    nosort: true,
   });
   await Promise.all(
     dirs.map(async (dir) => {
@@ -39,14 +33,13 @@ export const copyDir = async (
   source: string,
   target: string,
   fileGlob = '**/*.*',
-  globOptions: null | glob.IOptions = null,
+  globOptions: null | GlobOptionsWithFileTypesUnset = null,
   renameFn: (name: string) => string = (n) => n,
 ): Promise<void> => {
   const paths = await readDir(fileGlob, {
     cwd: source,
     dot: true,
     nodir: true,
-    nosort: true,
     ...globOptions,
   });
   await Promise.all(
@@ -61,13 +54,8 @@ export const copyDir = async (
 
 export const cleanDir = async (
   pattern: string,
-  globOptions?: glob.IOptions | false,
-): Promise<void> =>
-  new Promise((resolve, reject) => {
-    rimraf(pattern, { glob: globOptions }, (err?: Error | null) =>
-      err ? reject(err) : resolve(),
-    );
-  });
+  globOptions?: GlobOptions | false,
+): Promise<boolean> => rimraf(pattern, { glob: globOptions });
 
 export const producedPathExists = async (
   producer: () => Promise<string>,

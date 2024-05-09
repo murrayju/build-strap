@@ -34,9 +34,7 @@ export const ensureXcodeCmdInstalled = async (ignoreNonMac = true) => {
   if (
     !(await producedPathExists(
       async () =>
-        (
-          await spawn('xcode-select', ['-p'], { captureOutput: true })
-        ).output,
+        (await spawn('xcode-select', ['-p'], { captureOutput: true })).output,
     ))
   ) {
     buildLog('Installing XCode Command Line Tools...');

@@ -81,12 +81,12 @@ interface DockerImageCleanupOptions extends CommonDockerCleanupOptions {
  * Purge docker images created during build process
  */
 export const dockerImageCleanup = async ({
-  repos = [getDockerRepo()],
   buildImageIds = [],
+  dryRun = process.argv.includes('--dry-run'),
   images = [],
   purgeAll = process.argv.includes('--purge-all'),
   purgeOld = !process.argv.includes('--keep-old'),
-  dryRun = process.argv.includes('--dry-run'),
+  repos = [getDockerRepo()],
 }: DockerImageCleanupOptions = {}) => {
   // only match images without a :latest tag
   const filterLatest: DockerImageFilter = (m: DockerImage) =>

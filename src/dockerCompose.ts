@@ -144,18 +144,21 @@ const parsePorts = async (
   host = '0.0.0.0',
 ): Promise<ParsedPortInfo> => {
   const ports: PortMap[] = [];
-  const runArgs = await portsCfg.reduce(async (args, portStr) => {
-    const [lp, dp] = portStr.split(':');
-    const localDefault = parseInt(lp, 10);
-    const docker = parseInt(dp, 10);
-    const local = mapLocal
-      ? avoidConflicts
-        ? await getPort({ host, port: localDefault })
-        : localDefault
-      : null;
-    ports.push({ docker, local, localDefault });
-    return local ? [...(await args), '-p', `${local}:${docker}`] : args;
-  }, Promise.resolve([] as string[]));
+  const runArgs = await portsCfg.reduce(
+    async (args, portStr) => {
+      const [lp, dp] = portStr.split(':');
+      const localDefault = parseInt(lp, 10);
+      const docker = parseInt(dp, 10);
+      const local = mapLocal
+        ? avoidConflicts
+          ? await getPort({ host, port: localDefault })
+          : localDefault
+        : null;
+      ports.push({ docker, local, localDefault });
+      return local ? [...(await args), '-p', `${local}:${docker}`] : args;
+    },
+    Promise.resolve([] as string[]),
+  );
   return { ports, runArgs };
 };
 
@@ -478,11 +481,11 @@ export class DockerComposeService {
   }
 
   async up({
-    healthCheck,
     avoidConflicts = false,
-    mapVolumes = true,
-    mapPorts = true,
     cmd = this.cmd,
+    healthCheck,
+    mapPorts = true,
+    mapVolumes = true,
     tracker = defaultTracker,
   }: UpOptions = {}): Promise<UpResult> {
     const { image } = this;
@@ -609,10 +612,10 @@ export async function dockerComposeGetAllServices(
 }
 
 export async function dockerComposeTeardown({
-  includeDefaults = false,
-  includeVolumes = false,
-  includeNetworks = false,
   dockerCompose,
+  includeDefaults = false,
+  includeNetworks = false,
+  includeVolumes = false,
   tracker = defaultTracker,
 }: {
   dockerCompose?: null | (string | DockerCompose);
@@ -641,9 +644,7 @@ export async function dockerComposeTeardown({
           buildLog('Bringing down default docker services...');
           await Promise.all(
             svcNames.map(async (s) =>
-              (
-                await DockerComposeService.parse(s)
-              )?.down({
+              (await DockerComposeService.parse(s))?.down({
                 includeDefaults,
                 includeNetworks,
                 includeVolumes,
@@ -747,9 +748,9 @@ export async function dockerComposeRunService(
   const upResult: UpResult = await service.up(upOptions);
   const {
     container,
+    ports: [{ docker: dockerPort, local: port }],
     urls,
     urls: [{ docker: dockerUrl, local: url }],
-    ports: [{ docker: dockerPort, local: port }],
   } = upResult;
   const { id, image, name } = container;
   urls.forEach(

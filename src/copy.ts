@@ -6,7 +6,7 @@ import { onKillSignal } from './cp.js';
 import { cleanDir, copyDir } from './fs.js';
 import { buildLog } from './run.js';
 
-let timer: NodeJS.Timer | null = null;
+let timer: NodeJS.Timeout | null = null;
 async function throttledCallback(cbFn: undefined | (() => void)) {
   if (!cbFn || typeof cbFn !== 'function') {
     return;
@@ -29,10 +29,10 @@ export interface CopySrcOptions {
 }
 
 export async function copySrc({
+  cbFn,
   from,
   to,
   watch = process.argv.includes('--watch'),
-  cbFn,
 }: CopySrcOptions): Promise<void> {
   await copyDir(from, to);
   if (cbFn) await cbFn();
@@ -53,7 +53,7 @@ export async function copySrc({
           break;
         case 'unlink':
         case 'unlinkDir':
-          cleanDir(dest, { dot: true, nosort: true });
+          cleanDir(dest, { dot: true });
           break;
         default:
           return;

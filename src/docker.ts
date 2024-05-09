@@ -286,12 +286,12 @@ export async function dockerPullAndRunContainer(
   options: PullAndRunContainerOptions,
 ): Promise<string> {
   const {
-    image,
-    runArgs = [],
-    cmd = [],
-    network,
     alias,
+    cmd = [],
+    image,
+    network,
     offline = process.argv.includes('--offline'),
+    runArgs = [],
     testUrl,
   } = options;
 

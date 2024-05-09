@@ -327,9 +327,9 @@ interface DockerContainerRunArgs extends DockerContainerRunDaemonArgs {
 }
 
 export async function dockerContainerRun({
+  cmd = [],
   image,
   runArgs = [],
-  cmd = [],
   spawnOptions,
 }: DockerContainerRunArgs): Promise<string> {
   return (
@@ -342,9 +342,9 @@ export async function dockerContainerRun({
 }
 
 export async function dockerContainerRunDaemon({
+  cmd = [],
   image,
   runArgs = [],
-  cmd = [],
   waitAttempts = 10,
   waitDuration = 501,
 }: DockerContainerRunDaemonArgs): Promise<DockerContainer> {

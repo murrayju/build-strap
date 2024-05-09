@@ -104,16 +104,16 @@ export interface DockerNetworkCreateOptions {
 export async function dockerNetworkCreate(
   networkName: string,
   {
+    auxAddresses = [],
     driver,
     driverOpts = {},
-    ipRange,
     gateways = [],
-    subnets = [],
-    auxAddresses = [],
     ingress,
     internal,
+    ipRange,
     ipv6,
     labels = [],
+    subnets = [],
   }: DockerNetworkCreateOptions = {},
 ): Promise<DockerNetwork | null> {
   const existing = await dockerNetworkFind(networkName);

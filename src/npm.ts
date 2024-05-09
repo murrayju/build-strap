@@ -39,8 +39,8 @@ export interface NpmOptions {
 
 export async function npm({
   args = [],
-  spawnOptions,
   npmPath,
+  spawnOptions,
 }: NpmOptions = {}): Promise<SpawnResult> {
   const localNpm = path.join(
     path.dirname(process.execPath),
@@ -57,10 +57,10 @@ export async function npm({
   return npmPath
     ? spawn(npmPath, args, spawnOpts)
     : (await fs.pathExists(localNpm))
-    ? // prefer to use local copy of npm
-      spawn(process.execPath, [localNpm, ...args], spawnOpts)
-    : // fall back to globally installed npm
-      spawn(npmExe(), args, spawnOpts);
+      ? // prefer to use local copy of npm
+        spawn(process.execPath, [localNpm, ...args], spawnOpts)
+      : // fall back to globally installed npm
+        spawn(npmExe(), args, spawnOpts);
 }
 
 export async function npmGetVersions(
@@ -198,8 +198,8 @@ export async function npmPublish({
         (isRelease
           ? 'latest'
           : branch === (await getDevBranch())
-          ? 'next'
-          : 'branch'),
+            ? 'next'
+            : 'branch'),
       ...(access ? ['--access', access] : []),
       ...(dryRun ? ['--dry-run'] : []),
       '--color=always',

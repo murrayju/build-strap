@@ -88,7 +88,7 @@ export interface DockerVolumeCreateOptions {
 }
 export async function dockerVolumeCreate(
   name: string,
-  { labels = [], driver, driverOpts = {} }: DockerVolumeCreateOptions = {},
+  { driver, driverOpts = {}, labels = [] }: DockerVolumeCreateOptions = {},
 ): Promise<null | DockerVolume> {
   const existing = await dockerVolumeFind(name);
   if (existing) return existing;

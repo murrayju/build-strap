@@ -205,8 +205,8 @@ export async function yarnPublish({
         (isRelease
           ? 'latest'
           : branch === (await getDevBranch())
-          ? 'next'
-          : 'branch'),
+            ? 'next'
+            : 'branch'),
       ...(access ? ['--access', access] : []),
     ],
     spawnOptions: {

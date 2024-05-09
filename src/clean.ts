@@ -11,7 +11,6 @@ export async function clean(
       cleanDir(glob, {
         dot: true,
         ignore: ['.git', '.hg'],
-        nosort: true,
       }),
     ),
   );
