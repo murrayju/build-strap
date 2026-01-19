@@ -136,7 +136,7 @@ export async function dockerImages(
         digest,
         id,
         repository,
-        size: bytes.parse(Size),
+        size: bytes.parse(Size) || 0,
         tag,
       };
     })

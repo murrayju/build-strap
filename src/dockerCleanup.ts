@@ -137,8 +137,7 @@ export const dockerImageCleanup = async ({
 };
 
 interface DockerCleanupOptions
-  extends DockerImageCleanupOptions,
-    CommonDockerCleanupOptions {}
+  extends DockerImageCleanupOptions, CommonDockerCleanupOptions {}
 
 /**
  * Purge docker images created during build process

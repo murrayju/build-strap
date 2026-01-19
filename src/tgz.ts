@@ -4,7 +4,7 @@ import path from 'path';
 import { Readable } from 'stream';
 import StreamCounter from 'stream-counter';
 import { create } from 'tar';
-import { TarOptionsWithAliases } from 'tar/dist/commonjs/options.js';
+import { TarOptionsWithAliasesNoFile } from 'tar/dist/commonjs/options.js';
 
 import { buildLog } from './run.js';
 
@@ -83,7 +83,7 @@ export async function getArtifactInfo(
 export async function tgzDir(
   srcDir: string,
   outPath: string,
-  options?: TarOptionsWithAliases,
+  options?: TarOptionsWithAliasesNoFile,
 ): Promise<ArtifactInfo> {
   await fs.ensureDir(path.dirname(outPath));
   const tgzStream = create(

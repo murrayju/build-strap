@@ -17,8 +17,8 @@
     "node": ">=20"
   },
   "buildStrap": {
-    "nodeVersion": "20.13.1",
-    "yarnVersion": "1.22.19",
+    "nodeVersion": "24.13.0",
+    "yarnVersion": "1.22.22",
     "repoType": "git",
     "copyright": "Justin Murray",
     "releaseBranch": "master",
@@ -73,7 +73,7 @@
     "eslint-plugin-typescript-sort-keys": "^3.2.0",
     "prettier": "^3.2.5",
     "tsx": "^4.9.3",
-    "typescript": "^5.4.5"
+    "typescript": ">=5.5, <5.6.0"
   },
   "scripts": {
     "target": "tsx targets/run"
