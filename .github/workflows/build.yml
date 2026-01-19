@@ -1,9 +1,12 @@
 name: CI Build
 on:
   push:
-    branches: ['**']
+    branches: ["**"]
   pull_request:
-    branches: ['**']
+    branches: ["**"]
+permissions:
+  # Required for OIDC authentication to npm (https://docs.npmjs.com/trusted-publishers)
+  id-token: write
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -12,8 +15,6 @@ jobs:
         uses: actions/checkout@v3
       - name: Build and NPM Publish
         run: ./bs publish --buildNum=$GITHUB_RUN_NUMBER
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: Capture version
         run: echo "VERSION=$(./yarn run --silent target printNpmVersion --buildNum=$GITHUB_RUN_NUMBER --silence-buildLog 2> /dev/null)" >> $GITHUB_ENV
       - name: GH Release
