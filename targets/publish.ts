@@ -21,5 +21,5 @@ export default async function runPublish() {
   }
 
   await fs.copyFile('./dist/package.json', './out/package.json');
-  await npmPublish({ publishPath });
+  await npmPublish({ provenance: true, publishPath });
 }

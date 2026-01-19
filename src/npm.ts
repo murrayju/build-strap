@@ -106,6 +106,7 @@ export async function npmWriteRc({
   // Write out .npmrc with credentials
   const theRegistry = registry || 'https://registry.npmjs.org/';
   const [, host] = /^(?:http(?:s)?:\/\/)?(.+)$/.exec(theRegistry) || [];
+  buildLog(`Writing npmrc with registry ${theRegistry}`);
   await fs.mkdirp(path.dirname(outPath));
   await fs.writeFile(
     outPath,
@@ -128,6 +129,7 @@ export interface NpmPublishOptions {
   npmConfig?: NpmConfig;
   npmCreds?: NpmCreds;
   npmPath?: string;
+  provenance?: boolean;
   // distDir, or package.tgz file
   publishPath?: string;
   skipExisting?: boolean;
@@ -140,6 +142,7 @@ export async function npmPublish({
   npmConfig,
   npmCreds,
   npmPath,
+  provenance = false,
   publishPath = '.',
   skipExisting = false,
   tag,
@@ -205,6 +208,7 @@ export async function npmPublish({
             : 'branch'),
       ...(access ? ['--access', access] : []),
       ...(dryRun ? ['--dry-run'] : []),
+      ...(provenance ? ['--provenance'] : []),
       '--color=always',
     ],
     npmPath,
