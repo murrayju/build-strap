@@ -1,6 +1,6 @@
 import fs from 'fs-extra';
 
-import { buildLog, getVersion, run, yarnPublish } from '../src/index.js';
+import { buildLog, getVersion, npmPublish, run } from '../src/index.js';
 
 import doPackage from './package.js';
 
@@ -21,5 +21,5 @@ export default async function runPublish() {
   }
 
   await fs.copyFile('./dist/package.json', './out/package.json');
-  await yarnPublish({ publishPath });
+  await npmPublish({ publishPath });
 }
