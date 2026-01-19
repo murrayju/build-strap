@@ -19,6 +19,7 @@ export * from './git.js';
 export * from './macos.js';
 export * from './maps.js';
 export * from './npm.js';
+export * from './orbstack.js';
 export * from './pkg.js';
 export * from './promise.js';
 export * from './prompt.js';
