@@ -216,6 +216,7 @@ export async function npmPublish({
       cwd: workDir,
       env: {
         ...process.env,
+        npm_config_registry: registry || 'https://registry.npmjs.org/',
         ...(authToken
           ? {
               NPM_TOKEN: authToken,
