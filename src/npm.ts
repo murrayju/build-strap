@@ -189,6 +189,9 @@ export async function npmPublish({
       'Failed to publish npm package, this version already exists!',
     );
   }
+  if (authToken) {
+    buildLog(`Using NPM_TOKEN for authentication`);
+  }
   await npm({
     args: [
       'publish',
@@ -209,7 +212,11 @@ export async function npmPublish({
       cwd: workDir,
       env: {
         ...process.env,
-        NPM_TOKEN: authToken,
+        ...(authToken
+          ? {
+              NPM_TOKEN: authToken,
+            }
+          : {}),
       },
     },
   });
