@@ -3,18 +3,21 @@ import os from 'os';
 import path from 'path';
 
 import { brew } from './brew';
-import { spawn } from './cp';
+import { spawn, SpawnOptions, SpawnResult } from './cp';
 import { dockerIsRunning } from './docker';
 import { cmdExists, isMac } from './env';
 import { buildLog } from './run';
 
-export const ensureOrbStackInstalled = async () => {
+export const ensureOrbStackInstalled = async (
+  options?: SpawnOptions,
+): Promise<SpawnResult | null> => {
   if (!isMac()) {
     throw new Error('OrbStack is only supported on macOS');
   }
   if (!(await cmdExists('orb'))) {
-    await brew(['install', 'orbstack']);
+    return brew(['install', 'orbstack'], options);
   }
+  return null;
 };
 
 export const ensureOrbStackRunning = async (timeoutSeconds = 600) => {
