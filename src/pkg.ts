@@ -5,10 +5,9 @@ import { NpmConfig } from './npm.js';
 export interface BuildStrapConfig {
   cert?: CertConfig;
   copyright?: string;
-  devBranch?: string;
   docker?: DockerConfig;
+  mainBranch?: string;
   npm?: NpmConfig;
-  releaseBranch?: string;
   repoType?: 'git' | 'hg';
 }
 

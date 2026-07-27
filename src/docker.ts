@@ -16,7 +16,7 @@ import { downloadFile } from './fetch.js';
 import { mountDmg, unmountDmg } from './macos.js';
 import { getCfg, getPkgName, getPkgScope } from './pkg.js';
 import { buildLog } from './run.js';
-import { getDevBranch, getVersion } from './version.js';
+import { getMainBranch, getVersion } from './version.js';
 
 export interface DockerConfig {
   name?: string;
@@ -68,12 +68,11 @@ export async function dockerTag(
 
 /**
  * Apply the standard convention for tagging the docker image for the project,
- * based on the source control branch being built.
- * For releases, applies `latest`, `M.m.p`, `M.m`, `M`
- * For release candidates, applies `latest-rc`
- * For feature branches, applies `latest-feature`
- * For development branch, applies `latest-dev`
- * All other branches, no tag is applies
+ * based on the semver git tag (or branch) being built.
+ * For releases (a semver tag), applies `latest`, `M`, `M.m`, `M.m.p`
+ * For pre-releases (e.g. tag `v1.2.3-rc.1`), applies `1.2.3-rc.1` and `latest-rc`
+ * For untagged builds of the main branch, applies `latest-main`
+ * For all other builds, no tag is applied
  * @param {string} imageId id of the docker image to which to apply the tags
  * @param {string} repo optional override of the docker repo url to use (derived from package.json by default)
  */
@@ -81,20 +80,24 @@ export async function dockerTagVersion(
   imageId: string,
   repo: string = getDockerRepo(),
 ) {
-  const { branch, isRelease, major, minor, patch } = await getVersion();
+  const { branch, isRelease, major, minor, npm, patch, prerelease } =
+    await getVersion();
   // determine what tags to apply
   if (isRelease) {
     await dockerTag(
       imageId,
-      ['latest', `${major}`, `${major}.${minor}`, `${major}.${minor}.${patch}`],
+      prerelease
+        ? [npm, `latest-${prerelease.split('.')[0]}`]
+        : [
+            'latest',
+            `${major}`,
+            `${major}.${minor}`,
+            `${major}.${minor}.${patch}`,
+          ],
       repo,
     );
-  } else if (branch === (await getDevBranch())) {
-    await dockerTag(imageId, ['latest-dev'], repo);
-  } else if (branch.match(/^(release|patch)-/)) {
-    await dockerTag(imageId, ['latest-rc'], repo);
-  } else if (branch.match(/^feature-/)) {
-    await dockerTag(imageId, ['latest-feature'], repo);
+  } else if (branch === getMainBranch()) {
+    await dockerTag(imageId, [`latest-${branch}`], repo);
   }
 }
 

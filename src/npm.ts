@@ -5,7 +5,7 @@ import path from 'path';
 import { spawn, SpawnOptions, SpawnResult } from './cp.js';
 import { getCfg, getPkgName } from './pkg.js';
 import { buildLog } from './run.js';
-import { getDevBranch, getVersion } from './version.js';
+import { getDefaultNpmDistTag, getVersion } from './version.js';
 
 export type NpmCreds = {
   email?: string;
@@ -180,7 +180,7 @@ export async function npmPublish({
     });
   }
   const existing = await npmGetVersions(name, npmPath);
-  const { branch, isRelease, npm: npmVersion } = await getVersion();
+  const { npm: npmVersion } = await getVersion();
   if (existing.includes(npmVersion)) {
     if (skipExisting) {
       buildLog(
@@ -200,12 +200,7 @@ export async function npmPublish({
       'publish',
       resolvedPath,
       '--tag',
-      tag ||
-        (isRelease
-          ? 'latest'
-          : branch === (await getDevBranch())
-            ? 'next'
-            : 'branch'),
+      tag || (await getDefaultNpmDistTag()),
       ...(access ? ['--access', access] : []),
       ...(dryRun ? ['--dry-run'] : []),
       ...(provenance ? ['--provenance'] : []),

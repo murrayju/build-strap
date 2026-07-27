@@ -11,10 +11,34 @@ export const gitOutput = async (
 ): Promise<string> =>
   (await git(args, { captureOutput: true, ...opts })).stdout.trim();
 
-export async function gitBranch(): Promise<string> {
-  return (await gitOutput(['symbolic-ref', '--short', 'HEAD']))
-    .replace(/[_+/]/g, '-')
-    .trim();
+/**
+ * Convert a git ref name into a string that is safe to embed in a version.
+ */
+export function sanitizeGitRefName(refName: string): string {
+  return refName.replace(/[_+/]/g, '-').trim();
+}
+
+/**
+ * Name of the branch that is currently checked out, or `null` when the working
+ * copy is in a detached HEAD state (as is typical for tag and pull request
+ * builds on CI) and no branch name can be determined from the environment.
+ */
+export async function gitBranch(): Promise<null | string> {
+  const checkedOutBranch = await gitOutput(
+    ['symbolic-ref', '--short', 'HEAD'],
+    {
+      rejectOnErrorCode: false,
+    },
+  );
+  if (checkedOutBranch) {
+    return sanitizeGitRefName(checkedOutBranch);
+  }
+  // Detached HEAD: fall back to the branch reported by the CI environment.
+  // For pull requests, GITHUB_HEAD_REF holds the source branch of the PR.
+  const { GITHUB_HEAD_REF, GITHUB_REF } = process.env;
+  const envBranch =
+    GITHUB_HEAD_REF || GITHUB_REF?.match(/^refs\/heads\/(.+)$/)?.[1];
+  return envBranch ? sanitizeGitRefName(envBranch) : null;
 }
 
 export async function gitRevId(): Promise<string> {
@@ -23,8 +47,36 @@ export async function gitRevId(): Promise<string> {
     .trim();
 }
 
+/**
+ * All tags that point directly at the given commit (HEAD by default).
+ */
+export async function gitTagsAtCommit(commitish = 'HEAD'): Promise<string[]> {
+  const output = await gitOutput(['tag', '--points-at', commitish], {
+    rejectOnErrorCode: false,
+  });
+  return output.split('\n').filter(Boolean);
+}
+
+/**
+ * True when `ancestorCommitish` is reachable from `descendantCommitish`.
+ * Useful for verifying that a release tag lives on the main branch.
+ */
+export async function gitIsAncestor(
+  ancestorCommitish: string,
+  descendantCommitish: string,
+): Promise<boolean> {
+  return (
+    (
+      await git(
+        ['merge-base', '--is-ancestor', ancestorCommitish, descendantCommitish],
+        { rejectOnErrorCode: false },
+      )
+    ).code === 0
+  );
+}
+
 type GitInfo = {
-  branch: string;
+  branch: null | string;
   revision: string;
 };
 

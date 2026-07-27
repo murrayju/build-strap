@@ -1,21 +1,33 @@
 import fs from 'fs-extra';
 
-import { buildLog, getVersion, npmPublish, run } from '../src/index.js';
+import {
+  assertReleaseCommitIsOnMainBranch,
+  assertReleaseTagMatchesPackageVersion,
+  buildLog,
+  getVersion,
+  npmPublish,
+  run,
+} from '../src/index.js';
 
 import doPackage from './package.js';
 
 /**
- * Publish to npm.
+ * Publish to npm. Release versions are only published when the commit being
+ * built carries a semver tag and lives on the main branch.
  */
 export default async function runPublish() {
   const publishPath = await run(doPackage);
 
   const version = await getVersion();
-  const isDevBuild = parseInt(version.build, 10) === 0;
-  const doPublish = process.argv.includes('--force-publish') || !isDevBuild;
+  if (version.isRelease) {
+    await assertReleaseTagMatchesPackageVersion();
+    await assertReleaseCommitIsOnMainBranch();
+  }
+  const isLocalBuild = parseInt(version.build, 10) === 0;
+  const doPublish = process.argv.includes('--force-publish') || !isLocalBuild;
   if (!doPublish) {
     buildLog(
-      'Ignoring publish for dev build (build number is 0). Use --force-publish to override.',
+      'Ignoring publish for local build (build number is 0). Use --force-publish to override.',
     );
     return;
   }
