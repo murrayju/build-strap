@@ -12,10 +12,10 @@
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.js",
   "engines": {
-    "node": ">=20"
+    "node": ">=24"
   },
   "buildStrap": {
-    "nodeVersion": "24.13.0",
+    "nodeVersion": "24.18.0",
     "yarnVersion": "1.22.22",
     "repoType": "git",
     "copyright": "Justin Murray",
@@ -46,7 +46,7 @@
     "tar": "^7.1.0"
   },
   "devDependencies": {
-    "@tsconfig/node20": "^20.1.4",
+    "@tsconfig/node24": "^24.0.4",
     "@types/bytes": "^3.1.4",
     "@types/cross-spawn": "^6.0.6",
     "@types/eslint": "^8.56.10",
@@ -57,8 +57,8 @@
     "@types/rimraf": "^4.0.5",
     "@types/stream-counter": "^1.0.3",
     "@types/tar": "^6.1.13",
-    "@typescript-eslint/eslint-plugin": "^7.8.0",
-    "@typescript-eslint/parser": "^7.8.0",
+    "@typescript-eslint/eslint-plugin": "^8.65.0",
+    "@typescript-eslint/parser": "^8.65.0",
     "camelcase": "^8.0.0",
     "eslint": "^8.56.0",
     "eslint-config-airbnb-base": "^15.0.0",
@@ -71,7 +71,7 @@
     "eslint-plugin-typescript-sort-keys": "^3.2.0",
     "prettier": "^3.2.5",
     "tsx": "^4.9.3",
-    "typescript": ">=5.5, <5.6.0"
+    "typescript": "^5.9.3"
   },
   "scripts": {
     "target": "tsx targets/run"

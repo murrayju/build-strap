@@ -416,7 +416,7 @@ export const dockerContainerWaitForStart = async (
           if (await testFn(container)) {
             return resolve();
           }
-        } catch (err) {
+        } catch {
           // ignore
         }
         return tries < maxAttempts

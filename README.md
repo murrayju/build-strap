@@ -32,8 +32,8 @@ By default, the build tools read project-specific configuration from your `packa
   "name": "your-project-name",
   "version": "1.2.3",
   "buildStrap": {
-    "nodeVersion": "12.18.2",
-    "yarnVersion": "1.22.4",
+    "nodeVersion": "24.18.0",
+    "yarnVersion": "1.22.22",
     "repoType": "git",
     "copyright": "your company",
     "mainBranch": "main",

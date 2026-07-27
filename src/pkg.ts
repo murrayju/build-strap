@@ -19,9 +19,9 @@ export interface Person {
 
 export interface PackageJson {
   author?: string | Person;
-  contributors?: Array<string | Person>;
   // our addition
   buildStrap: BuildStrapConfig;
+  contributors?: (string | Person)[];
   dependencies?: Record<string, string>;
   description?: string;
   devDependencies?: Record<string, string>;
