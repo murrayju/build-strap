@@ -2,22 +2,41 @@ name: CI Build
 on:
   push:
     branches: ["**"]
-    tags-ignore: ["**"]
+    # Releases are triggered by pushing a semver tag to a commit on main
+    tags: ["v[0-9]+.[0-9]+.[0-9]+", "v[0-9]+.[0-9]+.[0-9]+-*"]
   pull_request:
     branches: ["**"]
 permissions:
   # Required for OIDC authentication to npm (https://docs.npmjs.com/trusted-publishers)
   id-token: write
-  contents: read
+  # Required to create the GitHub release for a semver tag
+  contents: write
 concurrency:
   group: build-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+        with:
+          # Need full history and the main branch ref so that a release can
+          # verify the tagged commit is contained in main
+          fetch-depth: 0
       - name: Build and NPM Publish
-        # Publishes a pre-release version (npm dist-tag `next` for main, `branch` otherwise)
+        # For a semver tag, publishes the release version (npm dist-tag `latest`).
+        # Otherwise publishes a pre-release (`next` for main, `branch` elsewhere).
         run: ./bs publish --buildNum=$GITHUB_RUN_NUMBER
+      - name: Capture version
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        run: echo "VERSION=$(./yarn run --silent target printNpmVersion --buildNum=$GITHUB_RUN_NUMBER --silence-buildLog 2> /dev/null)" >> $GITHUB_ENV
+      - name: GH Release
+        uses: softprops/action-gh-release@v2
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ env.VERSION }}
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          generate_release_notes: true
+          files: out/*.tgz
