@@ -2,11 +2,11 @@ import fs from 'fs-extra';
 import os from 'os';
 import path from 'path';
 
-import { brew } from './brew';
-import { spawn, SpawnOptions, SpawnResult } from './cp';
-import { dockerIsRunning } from './docker';
-import { cmdExists, isMac } from './env';
-import { buildLog } from './run';
+import { brew } from './brew.js';
+import { spawn, SpawnOptions, SpawnResult } from './cp.js';
+import { dockerIsRunning } from './docker.js';
+import { cmdExists, isMac } from './env.js';
+import { buildLog } from './run.js';
 
 export const ensureOrbStackInstalled = async (
   options?: SpawnOptions,
