@@ -12,8 +12,15 @@ export interface BuildStrapConfig {
   repoType?: 'git' | 'hg';
 }
 
+export interface Person {
+  email?: string;
+  name: string;
+  url?: string;
+}
+
 export interface PackageJson {
-  authors?: string[];
+  author?: string | Person;
+  contributors?: Array<string | Person>;
   // our addition
   buildStrap: BuildStrapConfig;
   dependencies?: Record<string, string>;

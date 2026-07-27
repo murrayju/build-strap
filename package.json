@@ -1,11 +1,9 @@
 {
   "name": "build-strap",
-  "version": "5.2.0",
+  "version": "5.2.1",
   "description": "Node scripts for building things",
   "license": "MIT",
-  "authors": [
-    "Justin Murray <justin@murrayju.com>"
-  ],
+  "author": "Justin Murray <justin@murrayju.com>",
   "repository": {
     "type": "git",
     "url": "https://github.com/murrayju/build-strap"
