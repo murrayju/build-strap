@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           # Need full history and the main branch ref so that a release can
           # verify the tagged commit is contained in main
@@ -32,7 +32,7 @@ jobs:
         if: ${{ startsWith(github.ref, 'refs/tags/') }}
         run: echo "VERSION=$(./yarn run --silent target printNpmVersion --buildNum=$GITHUB_RUN_NUMBER --silence-buildLog 2> /dev/null)" >> $GITHUB_ENV
       - name: GH Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         if: ${{ startsWith(github.ref, 'refs/tags/') }}
         with:
           tag_name: ${{ github.ref_name }}
