@@ -1,6 +1,6 @@
 {
   "name": "build-strap",
-  "version": "5.2.1",
+  "version": "6.0.0",
   "description": "Node scripts for building things",
   "license": "MIT",
   "author": "Justin Murray <justin@murrayju.com>",
@@ -19,8 +19,7 @@
     "yarnVersion": "1.22.22",
     "repoType": "git",
     "copyright": "Justin Murray",
-    "releaseBranch": "master",
-    "devBranch": "dev",
+    "mainBranch": "main",
     "npm": {
       "publish": true,
       "registry": "https://registry.npmjs.org/"
