@@ -4,11 +4,63 @@ export function format(time: Date = new Date()): string {
 
 const silenceLogs = process.argv.includes('--silence-buildLog');
 
-export function buildLog(msg: string, time?: Date) {
+/**
+ * Where `buildLog` output should be written. Either the name of one of the
+ * standard streams, any writable stream, or a function that receives the
+ * fully formatted message.
+ */
+export type BuildLogStream =
+  | 'stderr'
+  | 'stdout'
+  | NodeJS.WritableStream
+  | ((msg: string) => void);
+
+export interface BuildLogOptions {
+  /** Override the destination for this message only. */
+  stream?: BuildLogStream;
+  /** Timestamp to prefix the message with (defaults to now). */
+  time?: Date;
+}
+
+// stderr by default, so that stdout can be used for machine readable output.
+let defaultStream: BuildLogStream = process.argv.includes('--buildLog-stdout')
+  ? 'stdout'
+  : 'stderr';
+
+/** Change the destination used by `buildLog` when none is specified. */
+export function setBuildLogStream(stream: BuildLogStream): void {
+  defaultStream = stream;
+}
+
+/** The destination currently used by `buildLog` when none is specified. */
+export function getBuildLogStream(): BuildLogStream {
+  return defaultStream;
+}
+
+function writeLog(msg: string, stream: BuildLogStream): void {
+  if (typeof stream === 'function') {
+    stream(msg);
+  } else if (stream === 'stdout') {
+    process.stdout.write(`${msg}\n`);
+  } else if (stream === 'stderr') {
+    process.stderr.write(`${msg}\n`);
+  } else {
+    stream.write(`${msg}\n`);
+  }
+}
+
+export function buildLog(
+  msg: string,
+  timeOrOptions?: BuildLogOptions | Date,
+): void {
   if (silenceLogs) {
     return;
   }
-  console.info(`[${format(time || new Date())}] ${msg}`);
+  const { stream = defaultStream, time } =
+    timeOrOptions instanceof Date
+      ? { time: timeOrOptions }
+      : (timeOrOptions ?? {});
+  writeLog(`[${format(time || new Date())}] ${msg}`, stream);
 }
 
 export type RunnableModule<Args extends string[], Result> =
