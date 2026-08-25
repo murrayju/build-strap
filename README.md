@@ -120,12 +120,34 @@ publish(
 ```
 
 ### buildLog
-Write out to the console in a timestamp prefixed format consistent with the rest of the build output.
+Write out to the console in a timestamp prefixed format consistent with the rest of the build output. Output goes to `stderr` by default, so that `stdout` can be reserved for machine readable output.
 ```
 import { buildLog } from 'build-strap';
 
 buildLog('Hello world');
 ```
+
+Pass a `Date` (as before) or an options object to control the timestamp and destination:
+```
+buildLog('Hello world', new Date());
+buildLog('to stdout instead', { stream: 'stdout' });
+buildLog('to any writable stream', { stream: myWriteStream });
+buildLog('or handle it yourself', { stream: (msg) => myLogger.info(msg) });
+```
+
+The default destination can be changed globally (affects `run`/`runCli` logging too):
+```
+import { getBuildLogStream, setBuildLogStream } from 'build-strap';
+
+setBuildLogStream('stdout');
+setBuildLogStream(process.stderr);
+setBuildLogStream((msg) => myLogger.info(msg));
+getBuildLogStream(); // current default
+```
+
+CLI flags:
+- `--buildLog-stdout` — default to `stdout` instead of `stderr`
+- `--silence-buildLog` — suppress all `buildLog` output
 
 ## NPM Credentials
 In order to publish to NPM, proper credentials must be provided to the script. By default, these are read from the `NPM_CREDS` environment variable, but it is also possible to pass them as an argument to most functions. This is expected to be a JSON encoded string in the following format:
