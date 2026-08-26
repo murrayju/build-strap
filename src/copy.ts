@@ -6,8 +6,14 @@ import { onKillSignal } from './cp.js';
 import { cleanDir, copyDir } from './fs.js';
 import { buildLog, errorMessage } from './run.js';
 
+/**
+ * Callback invoked after a copy completes. May be sync or async; a returned
+ * promise is awaited.
+ */
+export type CopySrcCallback = () => Promise<void> | void;
+
 let timer: NodeJS.Timeout | null = null;
-function throttledCallback(cbFn: undefined | (() => void)) {
+function throttledCallback(cbFn: CopySrcCallback | undefined) {
   if (!cbFn || typeof cbFn !== 'function') {
     return;
   }
@@ -17,12 +23,20 @@ function throttledCallback(cbFn: undefined | (() => void)) {
   }
   timer = setTimeout(() => {
     timer = null;
-    cbFn();
+    // the callback may be async, so surface a rejection instead of leaving it
+    // floating on the timer
+    void (async () => {
+      try {
+        await cbFn();
+      } catch (e) {
+        buildLog(`Error in copySrc callback: ${errorMessage(e)}`);
+      }
+    })();
   }, 200);
 }
 
 export interface CopySrcOptions {
-  cbFn?: () => void;
+  cbFn?: CopySrcCallback;
   from: string;
   to: string;
   watch?: boolean;
@@ -35,7 +49,7 @@ export async function copySrc({
   watch = process.argv.includes('--watch'),
 }: CopySrcOptions): Promise<void> {
   await copyDir(from, to);
-  if (cbFn) cbFn();
+  if (cbFn) await cbFn();
   if (watch) {
     // chokidar v4 removed glob support; watch the directory recursively instead
     const watcher = chokidarWatch(from, {

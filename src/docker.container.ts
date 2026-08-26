@@ -397,35 +397,35 @@ export const dockerContainerWaitForStart = async (
 
   const { name } = container;
   buildLog(`Waiting for ${name} to fully start... ${indicator}`);
-  await new Promise<void>((resolve, reject) => {
-    const check = (tries = 0) => {
-      process.stdout.write(indicator);
-      const attempt = async () => {
-        try {
-          if (!(await container.isRunning())) {
-            reject(new Error(`The '${name}' container is no longer running.`));
-            return;
-          }
-          if (await testFn(container)) {
-            resolve();
-            return;
-          }
-        } catch {
-          // ignore
-        }
-        if (tries < maxAttempts) {
-          check(tries + 1);
-        } else {
-          reject(
-            new Error(`Timeout waiting for '${name}' container to start.`),
-          );
-        }
-      };
-      setTimeout(() => {
-        attempt().catch(reject);
-      }, timeoutMs);
-    };
-    check();
-  });
-  process.stdout.write('\n');
+
+  for (let tries = 0; tries <= maxAttempts; tries += 1) {
+    process.stdout.write(indicator);
+    await new Promise((resolve) => {
+      setTimeout(resolve, timeoutMs);
+    });
+
+    // A container that has definitively gone away will never become ready, so
+    // that case is terminal. An error from either check just means the state is
+    // currently unknown, so keep polling until maxAttempts is exhausted.
+    let gone = false;
+    let ready = false;
+    try {
+      if (await container.isRunning()) {
+        ready = await testFn(container);
+      } else {
+        gone = true;
+      }
+    } catch {
+      // state unknown; keep polling
+    }
+    if (gone) {
+      throw new Error(`The '${name}' container is no longer running.`);
+    }
+    if (ready) {
+      process.stdout.write('\n');
+      return;
+    }
+  }
+
+  throw new Error(`Timeout waiting for '${name}' container to start.`);
 };
