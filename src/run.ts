@@ -2,6 +2,28 @@ export function format(time: Date = new Date()): string {
   return time.toTimeString().replace(/.*(\d{2}:\d{2}:\d{2}).*/, '$1');
 }
 
+/**
+ * Extract a human readable message from an unknown caught value.
+ *
+ * `catch` and promise rejections are typed `unknown`, and anything can be
+ * thrown. Interpolating such a value directly is unsafe: the common
+ * `${e instanceof Error && e.message}` shorthand renders the string "false"
+ * whenever the thrown value is not an Error, hiding the real cause.
+ */
+export function errorMessage(err: unknown): string {
+  if (err instanceof Error) {
+    return err.message;
+  }
+  if (typeof err === 'string') {
+    return err;
+  }
+  try {
+    return JSON.stringify(err) ?? String(err);
+  } catch {
+    return String(err);
+  }
+}
+
 const silenceLogs = process.argv.includes('--silence-buildLog');
 
 /**
@@ -10,10 +32,7 @@ const silenceLogs = process.argv.includes('--silence-buildLog');
  * fully formatted message.
  */
 export type BuildLogStream =
-  | 'stderr'
-  | 'stdout'
-  | NodeJS.WritableStream
-  | ((msg: string) => void);
+  'stderr' | 'stdout' | NodeJS.WritableStream | ((msg: string) => void);
 
 export interface BuildLogOptions {
   /** Override the destination for this message only. */
@@ -72,7 +91,7 @@ export async function run<Args extends string[], Result>(
   ...options: Args
 ): Promise<Result> {
   if (fn == null) {
-    throw new Error(`Invalid argument passed to run(${fn})`);
+    throw new Error(`Invalid argument passed to run(${String(fn)})`);
   }
   const task = typeof fn === 'function' ? fn : fn.default;
   if (typeof task !== 'function') {
@@ -117,8 +136,8 @@ export async function runCli<Args extends string[], Result>({
     : passthroughArgv
       ? argv.slice(3)
       : [];
-  return run(module, ...(args as Args)).catch((err) => {
-    console.error((err && err.stack) || err);
+  return run(module, ...(args as Args)).catch((err: unknown) => {
+    console.error(err instanceof Error ? err.stack : err);
     process.exit(1);
   });
 }

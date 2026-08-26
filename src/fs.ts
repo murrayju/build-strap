@@ -62,7 +62,7 @@ export const producedPathExists = async (
 ): Promise<boolean> => {
   try {
     const result = (await producer()).trim();
-    return !!result && fs.pathExists(result);
+    return !!result && (await fs.pathExists(result));
   } catch {
     return false;
   }

@@ -2,10 +2,10 @@ import { ESLint } from 'eslint';
 
 import { buildLog } from '../src/index.js';
 
-export type ESLintOptions = {
+export interface ESLintOptions {
   autoFix?: boolean;
   patterns?: string[] | string;
-};
+}
 
 // Lint the source using eslint
 export default async function eslint({
@@ -23,7 +23,9 @@ export default async function eslint({
     await ESLint.outputFixes(results);
   }
   const formatter = await engine.loadFormatter('stylish');
-  const txtResults = formatter.format(results);
+  // format() is typed `string | Promise<string>`; awaiting keeps a
+  // promise-returning formatter from being interpolated as [object Promise]
+  const txtResults = await formatter.format(results);
   buildLog(`eslint results: ${txtResults ? `\n${txtResults}` : 'success'}`);
 
   if (results.some((r) => r.errorCount)) {

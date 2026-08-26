@@ -3,8 +3,6 @@
   "extends": "@tsconfig/node24/tsconfig.json",
   "compilerOptions": {
     "declaration": true,
-    "module": "esnext",
-    "moduleResolution": "Node",
     "outDir": "build",
     "resolveJsonModule": true
   },

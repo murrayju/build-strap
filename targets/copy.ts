@@ -1,7 +1,7 @@
 import fs from 'fs-extra';
 import path from 'path';
 
-import { copyDir, getPkg, getVersion, PackageJson } from '../src/index.js';
+import { copyDir, getPkg, getVersion } from '../src/index.js';
 
 /**
  * Copies everything to the dist folder that we want to publish
@@ -21,7 +21,7 @@ export default async function copy() {
           main: './src/index.js',
           types: './src/index.d.ts',
           version: version.npm,
-        } as PackageJson,
+        },
         null,
         2,
       ),

@@ -50,14 +50,14 @@ export const filterKeys = <V, K extends string = string>(
   filter: (value: V, key: K, objMap: Record<K, V>) => boolean = (v) =>
     v != null,
 ): Partial<Record<K, V>> =>
-  Object.entries<V>(obj ?? {}).reduce(
+  Object.entries<V>(obj ?? {}).reduce<Partial<Record<K, V>>>(
     (acc, [k, v]) =>
       filter(v, k as K, (obj ?? {}) as Record<K, V>)
         ? Object.assign(acc, {
             [k]: v,
           })
         : acc,
-    {} as Partial<Record<K, V>>,
+    {},
   );
 
 /**

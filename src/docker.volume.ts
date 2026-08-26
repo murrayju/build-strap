@@ -1,6 +1,7 @@
 import { throttle } from 'lodash-es';
 
 import { spawn } from './cp.js';
+import { errorMessage } from './run.js';
 
 type DockerVolumeInspectOutput = Record<string, unknown>;
 
@@ -112,9 +113,9 @@ export async function dockerVolumeRm(
     await spawn('docker', ['volume', 'rm', ...ids]);
   } catch (e) {
     if (!ignoreErrors) {
-      throw new Error(
-        `Failed to remove volume(s): ${e instanceof Error && e.message}`,
-      );
+      throw new Error(`Failed to remove volume(s): ${errorMessage(e)}`, {
+        cause: e,
+      });
     }
   }
 }

@@ -3,7 +3,7 @@ import { throttle } from 'lodash-es';
 
 import { spawn, SpawnOptions } from './cp.js';
 import { parseDockerDate } from './docker.js';
-import { buildLog } from './run.js';
+import { buildLog, errorMessage } from './run.js';
 
 interface DockerContainerInspectOutput {
   State: {
@@ -113,7 +113,7 @@ export async function unthrottledDockerContainerLs({
             return false;
           }
         },
-        exited: /^Exited/.test(status),
+        exited: status.startsWith('Exited'),
         id,
         image,
         inspect: async () => (await dockerContainerInspect(id))?.[0],
@@ -133,12 +133,12 @@ export async function unthrottledDockerContainerLs({
         networks: Networks.split(',').map((n) => n.trim()),
         ports: Ports.split(',').map((p) => {
           const [, iface, src, dest] =
-            p.match(/^([^:]+):(\d+)-\\u003e(\d+)/i) || [];
+            /^([^:]+):(\d+)-\\u003e(\d+)/i.exec(p) || [];
           return {
             dest: parseInt(dest, 10),
             iface,
             src: parseInt(src, 10),
-          } as Port;
+          };
         }),
         restart: async () => dockerContainerRestart(id),
         rm: async (ignoreError = true) => dockerContainerRm(id, ignoreError),
@@ -157,9 +157,7 @@ export async function unthrottledDockerContainerLs({
               log(`<${this.name}> container stopped.`);
             } catch (e1) {
               log(
-                `Failed to stop <${this.name}> container: ${
-                  e1 instanceof Error && e1.message
-                }`,
+                `Failed to stop <${this.name}> container: ${errorMessage(e1)}`,
               );
               try {
                 log(`Killing container: <${this.name}>...`);
@@ -167,9 +165,9 @@ export async function unthrottledDockerContainerLs({
                 log(`<${this.name}> container killed.`);
               } catch (e2) {
                 log(
-                  `Failed to kill <${this.name}> container: ${
-                    e2 instanceof Error && e2.message
-                  }`,
+                  `Failed to kill <${this.name}> container: ${errorMessage(
+                    e2,
+                  )}`,
                 );
               }
             }
@@ -220,9 +218,9 @@ export async function dockerContainerStop(
     await spawn('docker', ['container', 'stop', ...ids]);
   } catch (e) {
     if (!ignoreErrors) {
-      throw new Error(
-        `Failed to stop container(s): ${e instanceof Error && e.message}`,
-      );
+      throw new Error(`Failed to stop container(s): ${errorMessage(e)}`, {
+        cause: e,
+      });
     }
   }
 }
@@ -236,9 +234,9 @@ export async function dockerContainerKill(
     await spawn('docker', ['container', 'kill', ...ids]);
   } catch (e) {
     if (!ignoreErrors) {
-      throw new Error(
-        `Failed to kill container(s): ${e instanceof Error && e.message}`,
-      );
+      throw new Error(`Failed to kill container(s): ${errorMessage(e)}`, {
+        cause: e,
+      });
     }
   }
 }
@@ -248,9 +246,7 @@ export async function dockerTryStopContainer(id: string | null, name = '') {
     try {
       await dockerContainerStop(id, false);
     } catch (e) {
-      buildLog(
-        `Failed to stop ${name} container: ${e instanceof Error && e.message}`,
-      );
+      buildLog(`Failed to stop ${name} container: ${errorMessage(e)}`);
     }
   }
 }
@@ -265,14 +261,14 @@ export async function dockerContainerRm(
   } catch (e) {
     if (ignoreErrors) {
       buildLog(
-        `Warning (ignored Error): Failed to remove container(s): ${
-          e instanceof Error && e.message
-        }`,
+        `Warning (ignored Error): Failed to remove container(s): ${errorMessage(
+          e,
+        )}`,
       );
     } else {
-      throw new Error(
-        `Failed to remove container(s): ${e instanceof Error && e.message}`,
-      );
+      throw new Error(`Failed to remove container(s): ${errorMessage(e)}`, {
+        cause: e,
+      });
     }
   }
 }
@@ -364,7 +360,6 @@ export async function dockerContainerRunDaemon({
   let attempts = 0;
 
   // containers don't always show up in the list right away
-  /* eslint-disable no-await-in-loop */
   while (!container && attempts < waitAttempts) {
     await new Promise((resolve) => {
       setTimeout(resolve, waitDuration);
@@ -372,7 +367,6 @@ export async function dockerContainerRunDaemon({
     container = await dockerContainerFind(id);
     attempts += 1;
   }
-  /* eslint-enable no-await-in-loop */
 
   if (!container) {
     throw new Error(`Failed to find newly created container: ${id}`);
@@ -403,30 +397,35 @@ export const dockerContainerWaitForStart = async (
 
   const { name } = container;
   buildLog(`Waiting for ${name} to fully start... ${indicator}`);
-  await new Promise<void>((resolve, reject) => {
-    const check = (tries = 0) => {
-      process.stdout.write(indicator);
-      setTimeout(async () => {
-        try {
-          if (!(await container.isRunning())) {
-            return reject(
-              new Error(`The '${name}' container is no longer running.`),
-            );
-          }
-          if (await testFn(container)) {
-            return resolve();
-          }
-        } catch {
-          // ignore
-        }
-        return tries < maxAttempts
-          ? check(tries + 1)
-          : reject(
-              new Error(`Timeout waiting for '${name}' container to start.`),
-            );
-      }, timeoutMs);
-    };
-    check();
-  });
-  process.stdout.write('\n');
+
+  for (let tries = 0; tries <= maxAttempts; tries += 1) {
+    process.stdout.write(indicator);
+    await new Promise((resolve) => {
+      setTimeout(resolve, timeoutMs);
+    });
+
+    // A container that has definitively gone away will never become ready, so
+    // that case is terminal. An error from either check just means the state is
+    // currently unknown, so keep polling until maxAttempts is exhausted.
+    let gone = false;
+    let ready = false;
+    try {
+      if (await container.isRunning()) {
+        ready = await testFn(container);
+      } else {
+        gone = true;
+      }
+    } catch {
+      // state unknown; keep polling
+    }
+    if (gone) {
+      throw new Error(`The '${name}' container is no longer running.`);
+    }
+    if (ready) {
+      process.stdout.write('\n');
+      return;
+    }
+  }
+
+  throw new Error(`Timeout waiting for '${name}' container to start.`);
 };

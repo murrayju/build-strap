@@ -15,7 +15,7 @@ import { cmdExists, isArm, isMac } from './env.js';
 import { downloadFile } from './fetch.js';
 import { mountDmg, unmountDmg } from './macos.js';
 import { getCfg, getPkgName, getPkgScope } from './pkg.js';
-import { buildLog } from './run.js';
+import { buildLog, errorMessage } from './run.js';
 import { getMainBranch, getVersion } from './version.js';
 
 export interface DockerConfig {
@@ -44,8 +44,8 @@ export async function dockerBuild(
     'build',
     ...['-f', path.resolve(dockerFile)],
     ...(target ? ['--target', target] : []),
-    ...tags.reduce((ar, t) => [...ar, '-t', `${repo}:${t}`], [] as string[]),
-    ...buildArgs.reduce((ar, a) => [...ar, '--build-arg', a], [] as string[]),
+    ...tags.reduce<string[]>((ar, t) => [...ar, '-t', `${repo}:${t}`], []),
+    ...buildArgs.reduce<string[]>((ar, a) => [...ar, '--build-arg', a], []),
     ...(extraArgs || []),
     path.resolve(workDir),
   ];
@@ -88,12 +88,7 @@ export async function dockerTagVersion(
       imageId,
       prerelease
         ? [npm, `latest-${prerelease.split('.')[0]}`]
-        : [
-            'latest',
-            `${major}`,
-            `${major}.${minor}`,
-            `${major}.${minor}.${patch}`,
-          ],
+        : ['latest', major, `${major}.${minor}`, `${major}.${minor}.${patch}`],
       repo,
     );
   } else if (branch === getMainBranch()) {
@@ -144,9 +139,7 @@ export async function dockerImages(
       };
     })
     .filter(
-      (m) =>
-        (m && m.id) != null &&
-        (typeof filter === 'function' ? filter(m) : true),
+      (m) => m?.id != null && (typeof filter === 'function' ? filter(m) : true),
     );
 }
 
@@ -237,7 +230,7 @@ export async function dockerPull({
   testUrl,
 }: DockerPullOptions) {
   if (offline || !(await isReachable(testUrl || 'https://hub.docker.com'))) {
-    if (offline === false) {
+    if (!offline) {
       throw new Error('Offline, cannot docker pull');
     }
     buildLog('It looks like you are offline, skipping docker pull');
@@ -254,15 +247,19 @@ export async function dockerRmi(
   // must do these sequentially, or they will interfere with each other
   await images.reduce(async (prev, image) => {
     await prev;
-    await spawn('docker', ['rmi', image], { stdio: 'inherit' }).catch((err) => {
-      if (ignoreErrors) {
-        buildLog(
-          `Warning (ignored Error): Failed to rm image(s): ${err.message}`,
-        );
-      } else {
-        throw err;
-      }
-    });
+    await spawn('docker', ['rmi', image], { stdio: 'inherit' }).catch(
+      (err: unknown) => {
+        if (ignoreErrors) {
+          buildLog(
+            `Warning (ignored Error): Failed to rm image(s): ${errorMessage(
+              err,
+            )}`,
+          );
+        } else {
+          throw err;
+        }
+      },
+    );
   }, Promise.resolve());
 }
 
@@ -346,20 +343,24 @@ export async function copyFilesFromDockerImage({
   const copyErrors = [];
 
   try {
-    filePaths.forEach(async (fp) => {
-      // Try to copy from the Debug Folder
-      try {
-        await spawn(
-          'docker',
-          ['cp', `${container.id}:${fp.from}`, fp.to],
-          spawnOptions,
-        );
-        buildLog(`Copied ${fp.from} => ${fp.to}`);
-      } catch (error) {
-        copyErrors.push(error);
-        buildLog(`Error copying file ${fp.from}`);
-      }
-    });
+    // must be awaited: with forEach the copies were never waited on, so the
+    // container was killed mid-copy and copyErrors was always empty below
+    await Promise.all(
+      filePaths.map(async (fp) => {
+        // Try to copy from the Debug Folder
+        try {
+          await spawn(
+            'docker',
+            ['cp', `${container.id}:${fp.from}`, fp.to],
+            spawnOptions,
+          );
+          buildLog(`Copied ${fp.from} => ${fp.to}`);
+        } catch (error) {
+          copyErrors.push(error);
+          buildLog(`Error copying file ${fp.from}`);
+        }
+      }),
+    );
   } finally {
     try {
       await dockerContainerKill(container.id);

@@ -1,6 +1,6 @@
 import fs from 'fs-extra';
 import getPort from 'get-port';
-import yaml from 'js-yaml';
+import { load as yamlLoad } from 'js-yaml';
 import path from 'path';
 
 import {
@@ -25,13 +25,13 @@ import { cmdExists } from './env.js';
 import { mapValuesAsync } from './maps.js';
 import { buildLog } from './run.js';
 
-export type DockerComposeResourceTracker = {
+export interface DockerComposeResourceTracker {
   cleaning: null | Promise<void>;
   containers: Map<string, DockerContainer>;
   networks: Map<string, DockerNetwork>;
   services: Map<string, DockerComposeService>;
   volumes: Map<string, DockerVolume>;
-};
+}
 
 export const dockerComposeCreateResourceTracker =
   (): DockerComposeResourceTracker => ({
@@ -84,7 +84,7 @@ interface DockerCompose {
 export const dockerComposeParse = async (
   filePath = './docker-compose.yml',
 ): Promise<DockerCompose> =>
-  yaml.load(await fs.readFile(filePath, 'utf8')) as DockerCompose;
+  yamlLoad(await fs.readFile(filePath, 'utf8')) as DockerCompose;
 
 let dc: null | DockerCompose = null;
 
@@ -343,7 +343,6 @@ export class DockerComposeService {
    * @param {number} max maximum number of names to try
    */
   async getNames(avoidConflicts = false, max = 100): Promise<ServiceNameInfo> {
-    /* eslint-disable no-await-in-loop */
     for (let i = 0; i < max; i += 1) {
       const suffix = i ? `-${i}` : '';
       const testName = `${this.defaultContainerName}${suffix}`;
@@ -356,7 +355,6 @@ export class DockerComposeService {
         };
       }
     }
-    /* eslint-enable no-await-in-loop */
     throw new Error(
       `Failed to find available container name for ${this.defaultContainerName}`,
     );

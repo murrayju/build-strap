@@ -6,7 +6,7 @@ import { buildLog } from './run.js';
 
 export function getBuild(): string {
   const arg = process.argv.find((el) => /^--buildNum=\d+$/.test(el));
-  return (arg && arg.substring(11)) || process.env.BUILD_NUMBER || '0';
+  return arg?.substring(11) || process.env.BUILD_NUMBER || '0';
 }
 
 /**
@@ -25,25 +25,28 @@ enum RepoType {
   unknown = 'unknown',
 }
 
-export async function getRepoType(): Promise<RepoType> {
+// Returns a promise (rather than being `async`) because the body is synchronous
+// but the exported signature is awaited by callers and must stay thenable.
+
+export function getRepoType(): Promise<RepoType> {
   const { repoType } = getCfg();
 
-  return (
+  return Promise.resolve(
     (repoType as RepoType) ||
-    (fs.existsSync('./.git')
-      ? RepoType.git
-      : fs.existsSync('./.hg')
-        ? RepoType.hg
-        : RepoType.unknown)
+      (fs.existsSync('./.git')
+        ? RepoType.git
+        : fs.existsSync('./.hg')
+          ? RepoType.hg
+          : RepoType.unknown),
   );
 }
 
-type RepoInfo = {
+interface RepoInfo {
   // null when building a detached HEAD (e.g. a tag build) and no branch name
   // could be determined from the environment
   branch: null | string;
   revision: string;
-};
+}
 
 export async function getRepoInfo(): Promise<RepoInfo> {
   const repoType = await getRepoType();
@@ -77,7 +80,7 @@ const semverTagRegex =
  * semver version tag (an optional leading `v` is allowed).
  */
 export function parseSemverTag(tag: string): null | SemverTag {
-  const [, major, minor, patch, prerelease] = tag.match(semverTagRegex) || [];
+  const [, major, minor, patch, prerelease] = semverTagRegex.exec(tag) || [];
   if (!major || !minor || !patch) {
     return null;
   }
@@ -156,7 +159,6 @@ export async function assertReleaseCommitIsOnMainBranch(
   const { revision } = await getRepoInfo();
   const candidateRefs = [mainBranch, `origin/${mainBranch}`];
   for (const ref of candidateRefs) {
-    // eslint-disable-next-line no-await-in-loop
     if (await gitIsAncestor(revision, ref)) {
       return;
     }

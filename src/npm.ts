@@ -7,19 +7,19 @@ import { getCfg, getPkgName } from './pkg.js';
 import { buildLog } from './run.js';
 import { getDefaultNpmDistTag, getVersion } from './version.js';
 
-export type NpmCreds = {
+export interface NpmCreds {
   email?: string;
   password?: string;
   username?: string;
-};
+}
 
-export type NpmConfig = {
+export interface NpmConfig {
   access?: 'public' | 'restricted';
   dryRun?: boolean;
   name?: string;
   publish?: boolean;
   registry?: string;
-};
+}
 
 export function getNpmConfig(): NpmConfig {
   return getCfg().npm || {};

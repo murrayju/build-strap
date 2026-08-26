@@ -1,13 +1,19 @@
-import chokidar from 'chokidar';
+import { watch as chokidarWatch } from 'chokidar';
 import fs from 'fs-extra';
 import path from 'path';
 
 import { onKillSignal } from './cp.js';
 import { cleanDir, copyDir } from './fs.js';
-import { buildLog } from './run.js';
+import { buildLog, errorMessage } from './run.js';
+
+/**
+ * Callback invoked after a copy completes. May be sync or async; a returned
+ * promise is awaited.
+ */
+export type CopySrcCallback = () => Promise<void> | void;
 
 let timer: NodeJS.Timeout | null = null;
-async function throttledCallback(cbFn: undefined | (() => void)) {
+function throttledCallback(cbFn: CopySrcCallback | undefined) {
   if (!cbFn || typeof cbFn !== 'function') {
     return;
   }
@@ -17,12 +23,20 @@ async function throttledCallback(cbFn: undefined | (() => void)) {
   }
   timer = setTimeout(() => {
     timer = null;
-    cbFn();
+    // the callback may be async, so surface a rejection instead of leaving it
+    // floating on the timer
+    void (async () => {
+      try {
+        await cbFn();
+      } catch (e) {
+        buildLog(`Error in copySrc callback: ${errorMessage(e)}`);
+      }
+    })();
   }, 200);
 }
 
 export interface CopySrcOptions {
-  cbFn?: () => void;
+  cbFn?: CopySrcCallback;
   from: string;
   to: string;
   watch?: boolean;
@@ -37,11 +51,14 @@ export async function copySrc({
   await copyDir(from, to);
   if (cbFn) await cbFn();
   if (watch) {
-    const watcher = chokidar.watch([path.join(from, '/**/*')], {
+    // chokidar v4 removed glob support; watch the directory recursively instead
+    const watcher = chokidarWatch(from, {
       ignoreInitial: true,
     });
 
-    watcher.on('all', async (event, filePath) => {
+    // chokidar's typings expect a void-returning listener, so the async work
+    // is wrapped and its rejection handled rather than left floating
+    const handleEvent = async (event: string, filePath: string) => {
       const start = new Date();
       const src = path.relative(from, filePath);
       const dest = path.join(to, src);
@@ -53,7 +70,9 @@ export async function copySrc({
           break;
         case 'unlink':
         case 'unlinkDir':
-          cleanDir(dest, { dot: true });
+          // must be awaited: otherwise the log below (and the throttled
+          // callback) can fire before the delete actually completes
+          await cleanDir(dest, { dot: true });
           break;
         default:
           return;
@@ -62,8 +81,16 @@ export async function copySrc({
       const time = end.getTime() - start.getTime();
       buildLog(`${event} '${dest}' after ${time} ms`, end);
       throttledCallback(cbFn);
+    };
+
+    watcher.on('all', (event, filePath) => {
+      handleEvent(event, filePath).catch((e: unknown) => {
+        buildLog(`Error handling ${event} for ${filePath}: ${errorMessage(e)}`);
+      });
     });
 
-    onKillSignal(() => watcher.close());
+    onKillSignal(() => {
+      void watcher.close();
+    });
   }
 }

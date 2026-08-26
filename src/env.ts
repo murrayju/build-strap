@@ -10,7 +10,6 @@ const cacheBool = (key: string, fn: () => boolean): boolean => {
   if (!boolCache.has(key)) {
     boolCache.set(key, fn());
   }
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   return boolCache.get(key)!;
 };
 
@@ -35,7 +34,6 @@ const cacheString = (key: string, fn: () => string | null): string => {
   if (!stringCache.has(key)) {
     stringCache.set(key, fn());
   }
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
   return stringCache.get(key)!;
 };
 
