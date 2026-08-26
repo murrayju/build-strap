@@ -13,8 +13,8 @@ export interface CertConfig {
   countryName?: string;
   emailAddress?: string;
   localityName?: string;
-  organizationName?: string;
   organizationalUnitName?: string;
+  organizationName?: string;
   stateOrProvinceName?: string;
 }
 
@@ -53,8 +53,8 @@ export async function generateCert(
     countryName = 'US',
     emailAddress = 'contact@company.com',
     localityName = 'SomeCity',
-    organizationName = 'Company',
     organizationalUnitName = 'Product',
+    organizationName = 'Company',
     stateOrProvinceName = 'Pennsylvania',
   } = getCertConfig();
   const hostname = os.hostname();

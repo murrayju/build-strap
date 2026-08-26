@@ -222,6 +222,7 @@ export async function dockerContainerStop(
     if (!ignoreErrors) {
       throw new Error(
         `Failed to stop container(s): ${e instanceof Error && e.message}`,
+        { cause: e },
       );
     }
   }
@@ -238,6 +239,7 @@ export async function dockerContainerKill(
     if (!ignoreErrors) {
       throw new Error(
         `Failed to kill container(s): ${e instanceof Error && e.message}`,
+        { cause: e },
       );
     }
   }
@@ -272,6 +274,7 @@ export async function dockerContainerRm(
     } else {
       throw new Error(
         `Failed to remove container(s): ${e instanceof Error && e.message}`,
+        { cause: e },
       );
     }
   }
@@ -364,7 +367,6 @@ export async function dockerContainerRunDaemon({
   let attempts = 0;
 
   // containers don't always show up in the list right away
-  /* eslint-disable no-await-in-loop */
   while (!container && attempts < waitAttempts) {
     await new Promise((resolve) => {
       setTimeout(resolve, waitDuration);
@@ -372,7 +374,6 @@ export async function dockerContainerRunDaemon({
     container = await dockerContainerFind(id);
     attempts += 1;
   }
-  /* eslint-enable no-await-in-loop */
 
   if (!container) {
     throw new Error(`Failed to find newly created container: ${id}`);

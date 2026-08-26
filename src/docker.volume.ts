@@ -114,6 +114,7 @@ export async function dockerVolumeRm(
     if (!ignoreErrors) {
       throw new Error(
         `Failed to remove volume(s): ${e instanceof Error && e.message}`,
+        { cause: e },
       );
     }
   }

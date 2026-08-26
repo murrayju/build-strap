@@ -10,10 +10,7 @@ const silenceLogs = process.argv.includes('--silence-buildLog');
  * fully formatted message.
  */
 export type BuildLogStream =
-  | 'stderr'
-  | 'stdout'
-  | NodeJS.WritableStream
-  | ((msg: string) => void);
+  'stderr' | 'stdout' | NodeJS.WritableStream | ((msg: string) => void);
 
 export interface BuildLogOptions {
   /** Override the destination for this message only. */

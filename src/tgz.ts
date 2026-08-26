@@ -3,18 +3,17 @@ import fs from 'fs-extra';
 import path from 'path';
 import { Readable } from 'stream';
 import StreamCounter from 'stream-counter';
-import { create } from 'tar';
-import { TarOptionsWithAliasesNoFile } from 'tar/dist/commonjs/options.js';
+import { create, type TarOptionsWithAliasesAsyncNoFile } from 'tar';
 
 import { buildLog } from './run.js';
 
-export type ArtifactInfo = {
+export interface ArtifactInfo {
   contentType?: string;
   md5: string;
   sha1: string;
   sha512: string;
   size: number;
-};
+}
 
 const generateHash = async (
   stream: Pick<Readable, 'pipe'>,
@@ -83,7 +82,7 @@ export async function getArtifactInfo(
 export async function tgzDir(
   srcDir: string,
   outPath: string,
-  options?: TarOptionsWithAliasesNoFile,
+  options?: TarOptionsWithAliasesAsyncNoFile,
 ): Promise<ArtifactInfo> {
   await fs.ensureDir(path.dirname(outPath));
   const tgzStream = create(

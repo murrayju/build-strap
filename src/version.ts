@@ -38,12 +38,12 @@ export async function getRepoType(): Promise<RepoType> {
   );
 }
 
-type RepoInfo = {
+interface RepoInfo {
   // null when building a detached HEAD (e.g. a tag build) and no branch name
   // could be determined from the environment
   branch: null | string;
   revision: string;
-};
+}
 
 export async function getRepoInfo(): Promise<RepoInfo> {
   const repoType = await getRepoType();
@@ -156,7 +156,6 @@ export async function assertReleaseCommitIsOnMainBranch(
   const { revision } = await getRepoInfo();
   const candidateRefs = [mainBranch, `origin/${mainBranch}`];
   for (const ref of candidateRefs) {
-    // eslint-disable-next-line no-await-in-loop
     if (await gitIsAncestor(revision, ref)) {
       return;
     }

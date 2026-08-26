@@ -4,11 +4,11 @@ import { spawn } from './cp.js';
 import { parseDockerDate } from './docker.js';
 
 export interface DockerNetwork {
-  IPv6: boolean;
   created: Date;
   driver: string;
   exists: () => Promise<boolean>;
   id: string;
+  IPv6: boolean;
   labels: string[];
   name: string;
   rm: () => Promise<void>;
@@ -53,11 +53,11 @@ export async function unthrottledDockerNetworkLs({
       } = JSON.parse(line.trim()) as DockerNetworkLsOutput;
 
       return {
-        IPv6: IPv6 === 'true',
         created: parseDockerDate(CreatedAt),
         driver,
         exists: async () => !!(await dockerNetworkFind(id)),
         id,
+        IPv6: IPv6 === 'true',
         labels: Labels.split(',').map((l) => l.trim()),
         name,
         rm: async () => dockerNetworkRm(id),
@@ -150,9 +150,8 @@ export async function dockerNetworkRm(id: string) {
  */
 export async function dockerNetworkDelete(networkName: string) {
   let existing;
-  // eslint-disable-next-line no-cond-assign, no-await-in-loop
+  // extra parens satisfy no-cond-assign's `except-parens` option
   while ((existing = await dockerNetworkFind(networkName))) {
-    // eslint-disable-next-line no-await-in-loop
     await existing.rm();
   }
 }

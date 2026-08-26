@@ -80,16 +80,14 @@ export const ensureOrbStackConfigured = async (
       )
     ) {
       buildLog('Adjusting OrbStack config...');
-      const newConfig = {
-        ...existingConfig,
-        ...desiredConfig,
-      };
-      for (const [key, value] of Object.entries(defaultConfig)) {
-        if (newConfig[key] === value) {
-          // Don't write default values
-          delete newConfig[key];
-        }
-      }
+      const defaults: Record<string, unknown> = defaultConfig;
+      // Don't write values that already match the defaults
+      const newConfig = Object.fromEntries(
+        Object.entries({
+          ...existingConfig,
+          ...desiredConfig,
+        }).filter(([key, value]) => defaults[key] !== value),
+      );
       await fs.writeJson(configPath, newConfig, { spaces: 2 });
       changed = true;
     }

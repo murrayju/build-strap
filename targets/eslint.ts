@@ -2,10 +2,10 @@ import { ESLint } from 'eslint';
 
 import { buildLog } from '../src/index.js';
 
-export type ESLintOptions = {
+export interface ESLintOptions {
   autoFix?: boolean;
   patterns?: string[] | string;
-};
+}
 
 // Lint the source using eslint
 export default async function eslint({

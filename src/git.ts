@@ -75,10 +75,10 @@ export async function gitIsAncestor(
   );
 }
 
-type GitInfo = {
+interface GitInfo {
   branch: null | string;
   revision: string;
-};
+}
 
 let info: null | GitInfo = null;
 export async function gitInfo(noCache = false): Promise<GitInfo> {

@@ -1,4 +1,4 @@
-import chokidar from 'chokidar';
+import { watch as chokidarWatch } from 'chokidar';
 import fs from 'fs-extra';
 import path from 'path';
 
@@ -37,7 +37,8 @@ export async function copySrc({
   await copyDir(from, to);
   if (cbFn) await cbFn();
   if (watch) {
-    const watcher = chokidar.watch([path.join(from, '/**/*')], {
+    // chokidar v4 removed glob support; watch the directory recursively instead
+    const watcher = chokidarWatch(from, {
       ignoreInitial: true,
     });
 
