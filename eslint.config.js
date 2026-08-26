@@ -34,10 +34,13 @@ export default defineConfig(
       '**/*.cjs',
     ],
     languageOptions: {
-      globals: {
-        ...globals.es2021,
-        ...globals.node,
-      },
+      // only `no-undef` consumes these, and typescript-eslint's
+      // eslint-recommended turns that rule off for **/*.{ts,tsx,mts,cts}. So
+      // this matters solely for the plain .js files matched above (today just
+      // this config file). `globals.es2021` is deliberately not spread in:
+      // flat config defaults ecmaVersion to `latest`, and eslint already knows
+      // every ES built-in for that version.
+      globals: globals.node,
       parserOptions: {
         ecmaVersion: 'latest',
         // type-aware linting. projectService (rather than an explicit `project`
