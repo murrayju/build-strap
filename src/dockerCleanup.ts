@@ -15,6 +15,10 @@ import { buildLog } from './run.js';
 
 // flattens arrays of promises and/or promises for arrays
 // into a single array of (awaited) values
+// The recursive shape here defeats both the type checker and the type-aware
+// await rules: `input` may itself be an array of promises, so the awaits are
+// load-bearing even where the static type looks non-thenable.
+/* eslint-disable @typescript-eslint/await-thenable */
 async function flatten(
   input: Promise<string>[] | Promise<string[]>[] | Promise<string[]>[][],
 ): Promise<string[]> {
@@ -26,6 +30,7 @@ async function flatten(
       )
     : result;
 }
+/* eslint-enable @typescript-eslint/await-thenable */
 
 interface CommonDockerCleanupOptions {
   /** print matched items to console instead of deleting */
@@ -90,7 +95,7 @@ export const dockerImageCleanup = async ({
 }: DockerImageCleanupOptions = {}) => {
   // only match images without a :latest tag
   const filterLatest: DockerImageFilter = (m: DockerImage) =>
-    purgeAll || !m.tag.match(/^latest(-\w+)?$/);
+    purgeAll || !/^latest(-\w+)?$/.exec(m.tag);
   // only match images more than an hour old, AND without a :latest* tag
   const filterOld: DockerImageFilter = (m: DockerImage) =>
     purgeAll ||

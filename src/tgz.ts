@@ -28,7 +28,9 @@ const generateHash = async (
       .on('end', function onEnd(this: Readable) {
         resolve(this.read());
       })
-      .on('error', (err) => reject(err));
+      .on('error', (err) => {
+        reject(err);
+      });
   });
 
 export const generateFileHash = async (
@@ -41,9 +43,15 @@ const countBytes = async (stream: Pick<Readable, 'pipe'>): Promise<number> =>
     const counter = new StreamCounter();
     stream
       .pipe(counter)
-      .on('finish', () => resolve(counter.bytes))
-      .on('end', () => resolve(counter.bytes))
-      .on('error', (err: Error) => reject(err));
+      .on('finish', () => {
+        resolve(counter.bytes);
+      })
+      .on('end', () => {
+        resolve(counter.bytes);
+      })
+      .on('error', (err: Error) => {
+        reject(err);
+      });
   });
 
 const writeStreamToFile = async (
@@ -57,7 +65,9 @@ const writeStreamToFile = async (
         buildLog(`Successfully wrote file: ${filePath}`);
         resolve();
       })
-      .on('error', (err) => reject(err));
+      .on('error', (err) => {
+        reject(err);
+      });
   });
 
 // Take the given file (path or stream) and compute metadata for it.
@@ -98,7 +108,7 @@ export async function tgzDir(
   // write the file to disk (outPath)
   const [info] = await Promise.all([
     getArtifactInfo(tgzStream),
-    writeStreamToFile(tgzStream, `${outPath}`),
+    writeStreamToFile(tgzStream, outPath),
   ]);
   return {
     ...info,

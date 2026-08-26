@@ -69,7 +69,7 @@ export function getPkgName(includeScope = false): string {
   if (includeScope) {
     return pkg.name;
   }
-  const [, , shortName] = pkg.name.match(pkgNameRegex) || [];
+  const [, , shortName] = pkgNameRegex.exec(pkg.name) || [];
   if (!shortName) {
     throw new Error('Package name in package.json has invalid format.');
   }
@@ -78,12 +78,12 @@ export function getPkgName(includeScope = false): string {
 
 export function getPkgScope(): null | string {
   const pkgName = getPkgName(true);
-  return pkgName.match(pkgNameRegex)?.[1] || null;
+  return pkgNameRegex.exec(pkgName)?.[1] || null;
 }
 
 export function getPkgSafeName(): null | string {
   const pkgName = getPkgName(true);
-  const match = pkgName.match(pkgNameRegex);
+  const match = pkgNameRegex.exec(pkgName);
   if (!match) {
     return null;
   }

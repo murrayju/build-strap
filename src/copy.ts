@@ -7,7 +7,7 @@ import { cleanDir, copyDir } from './fs.js';
 import { buildLog } from './run.js';
 
 let timer: NodeJS.Timeout | null = null;
-async function throttledCallback(cbFn: undefined | (() => void)) {
+function throttledCallback(cbFn: undefined | (() => void)) {
   if (!cbFn || typeof cbFn !== 'function') {
     return;
   }
@@ -35,14 +35,16 @@ export async function copySrc({
   watch = process.argv.includes('--watch'),
 }: CopySrcOptions): Promise<void> {
   await copyDir(from, to);
-  if (cbFn) await cbFn();
+  if (cbFn) cbFn();
   if (watch) {
     // chokidar v4 removed glob support; watch the directory recursively instead
     const watcher = chokidarWatch(from, {
       ignoreInitial: true,
     });
 
-    watcher.on('all', async (event, filePath) => {
+    // chokidar's typings expect a void-returning listener, so the async work
+    // is wrapped and its rejection handled rather than left floating
+    const handleEvent = async (event: string, filePath: string) => {
       const start = new Date();
       const src = path.relative(from, filePath);
       const dest = path.join(to, src);
@@ -54,7 +56,9 @@ export async function copySrc({
           break;
         case 'unlink':
         case 'unlinkDir':
-          cleanDir(dest, { dot: true });
+          // must be awaited: otherwise the log below (and the throttled
+          // callback) can fire before the delete actually completes
+          await cleanDir(dest, { dot: true });
           break;
         default:
           return;
@@ -63,8 +67,20 @@ export async function copySrc({
       const time = end.getTime() - start.getTime();
       buildLog(`${event} '${dest}' after ${time} ms`, end);
       throttledCallback(cbFn);
+    };
+
+    watcher.on('all', (event, filePath) => {
+      handleEvent(event, filePath).catch((e: unknown) => {
+        buildLog(
+          `Error handling ${event} for ${filePath}: ${
+            e instanceof Error ? e.message : String(e)
+          }`,
+        );
+      });
     });
 
-    onKillSignal(() => watcher.close());
+    onKillSignal(() => {
+      void watcher.close();
+    });
   }
 }

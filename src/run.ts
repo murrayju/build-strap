@@ -69,7 +69,7 @@ export async function run<Args extends string[], Result>(
   ...options: Args
 ): Promise<Result> {
   if (fn == null) {
-    throw new Error(`Invalid argument passed to run(${fn})`);
+    throw new Error(`Invalid argument passed to run(${String(fn)})`);
   }
   const task = typeof fn === 'function' ? fn : fn.default;
   if (typeof task !== 'function') {
@@ -114,8 +114,8 @@ export async function runCli<Args extends string[], Result>({
     : passthroughArgv
       ? argv.slice(3)
       : [];
-  return run(module, ...(args as Args)).catch((err) => {
-    console.error((err && err.stack) || err);
+  return run(module, ...(args as Args)).catch((err: unknown) => {
+    console.error(err instanceof Error ? err.stack : err);
     process.exit(1);
   });
 }

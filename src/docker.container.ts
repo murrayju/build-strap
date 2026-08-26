@@ -113,7 +113,7 @@ export async function unthrottledDockerContainerLs({
             return false;
           }
         },
-        exited: /^Exited/.test(status),
+        exited: status.startsWith('Exited'),
         id,
         image,
         inspect: async () => (await dockerContainerInspect(id))?.[0],
@@ -133,12 +133,12 @@ export async function unthrottledDockerContainerLs({
         networks: Networks.split(',').map((n) => n.trim()),
         ports: Ports.split(',').map((p) => {
           const [, iface, src, dest] =
-            p.match(/^([^:]+):(\d+)-\\u003e(\d+)/i) || [];
+            /^([^:]+):(\d+)-\\u003e(\d+)/i.exec(p) || [];
           return {
             dest: parseInt(dest, 10),
             iface,
             src: parseInt(src, 10),
-          } as Port;
+          };
         }),
         restart: async () => dockerContainerRestart(id),
         rm: async (ignoreError = true) => dockerContainerRm(id, ignoreError),
@@ -407,24 +407,29 @@ export const dockerContainerWaitForStart = async (
   await new Promise<void>((resolve, reject) => {
     const check = (tries = 0) => {
       process.stdout.write(indicator);
-      setTimeout(async () => {
+      const attempt = async () => {
         try {
           if (!(await container.isRunning())) {
-            return reject(
-              new Error(`The '${name}' container is no longer running.`),
-            );
+            reject(new Error(`The '${name}' container is no longer running.`));
+            return;
           }
           if (await testFn(container)) {
-            return resolve();
+            resolve();
+            return;
           }
         } catch {
           // ignore
         }
-        return tries < maxAttempts
-          ? check(tries + 1)
-          : reject(
-              new Error(`Timeout waiting for '${name}' container to start.`),
-            );
+        if (tries < maxAttempts) {
+          check(tries + 1);
+        } else {
+          reject(
+            new Error(`Timeout waiting for '${name}' container to start.`),
+          );
+        }
+      };
+      setTimeout(() => {
+        attempt().catch(reject);
       }, timeoutMs);
     };
     check();

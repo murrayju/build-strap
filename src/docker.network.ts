@@ -62,7 +62,7 @@ export async function unthrottledDockerNetworkLs({
         name,
         rm: async () => dockerNetworkRm(id),
         scope,
-      } as DockerNetwork;
+      };
     })
     .filter((n) => n.id && (typeof filter === 'function' ? filter(n) : true));
 }

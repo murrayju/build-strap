@@ -5,17 +5,19 @@ import importX from 'eslint-plugin-import-x';
 import n from 'eslint-plugin-n';
 import perfectionist from 'eslint-plugin-perfectionist';
 import prettierPlugin from 'eslint-plugin-prettier';
+import { defineConfig } from 'eslint/config';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
-export default tseslint.config(
+// eslint core's defineConfig replaces the now-deprecated tseslint.config()
+export default defineConfig(
   {
     // replaces the old .eslintignore file, which eslint 10 no longer reads
     ignores: ['build/', 'dist/', 'download/', 'node_modules/'],
   },
   js.configs.recommended,
-  tseslint.configs.strict,
-  tseslint.configs.stylistic,
+  tseslint.configs.strictTypeChecked,
+  tseslint.configs.stylisticTypeChecked,
   {
     // must cover every extension typescript-eslint's configs match
     // (**/*.mts and **/*.cts included), otherwise those files are discovered
@@ -38,7 +40,15 @@ export default tseslint.config(
       },
       parserOptions: {
         ecmaVersion: 'latest',
+        // type-aware linting. projectService (rather than an explicit `project`
+        // list) uses the same project resolution as an editor, so files outside
+        // tsconfig's `include` -- eslint.config.js at the repo root -- still
+        // resolve instead of erroring.
+        projectService: {
+          allowDefaultProject: ['eslint.config.js'],
+        },
         sourceType: 'module',
+        tsconfigRootDir: import.meta.dirname,
       },
     },
     plugins: {
@@ -51,16 +61,46 @@ export default tseslint.config(
       '@typescript-eslint/array-type': 'error',
       // this codebase intentionally infers return types
       '@typescript-eslint/explicit-function-return-type': 'off',
+      // --- type-aware rules kept as warnings ---
+      // These flag pre-existing patterns throughout the codebase rather than
+      // new breakage, and mechanically "fixing" them risks behavior changes
+      // (see prefer-nullish-coalescing). They are surfaced as warnings so the
+      // build stays green while the debt is visible and can be paid down
+      // incrementally. The correctness-critical type-aware rules
+      // (no-floating-promises, no-misused-promises, await-thenable,
+      // return-await, no-base-to-string, ...) remain errors.
+      //
+      // `||` is deliberate in much of this codebase: it also falls back on the
+      // empty string, which `??` does not (e.g. NPM_TOKEN='').
+      '@typescript-eslint/no-confusing-void-expression': 'warn',
       '@typescript-eslint/no-empty-function': 'warn',
       // `strict` bans non-null assertions, but several caching helpers rely on
       // a `has()` check immediately before `get()!`
       '@typescript-eslint/no-non-null-assertion': 'off',
       '@typescript-eslint/no-redeclare': 'error',
-      // NOTE: airbnb's `no-return-await` is not carried forward. The core rule
-      // is deprecated, and its replacement (@typescript-eslint/return-await)
-      // requires type-aware linting, which this project does not enable.
       '@typescript-eslint/no-shadow': 'error',
+      '@typescript-eslint/no-unnecessary-condition': 'warn',
+      '@typescript-eslint/no-unsafe-argument': 'warn',
+
+      '@typescript-eslint/no-unsafe-assignment': 'warn',
+      '@typescript-eslint/no-unsafe-call': 'warn',
+      '@typescript-eslint/no-unsafe-member-access': 'warn',
+      '@typescript-eslint/no-unsafe-return': 'warn',
       '@typescript-eslint/no-unused-vars': 'error',
+      '@typescript-eslint/prefer-nullish-coalescing': 'warn',
+      '@typescript-eslint/prefer-optional-chain': 'warn',
+      '@typescript-eslint/prefer-reduce-type-parameter': 'warn',
+      '@typescript-eslint/prefer-regexp-exec': 'warn',
+      '@typescript-eslint/restrict-plus-operands': 'warn',
+      // interpolating numbers is idiomatic in this codebase's log messages;
+      // the remaining nullable/boolean cases are still reported
+      '@typescript-eslint/restrict-template-expressions': [
+        'error',
+        { allowNumber: true },
+      ],
+      // now available thanks to type-aware linting; replaces the deprecated
+      // core `no-return-await` that airbnb used
+      '@typescript-eslint/return-await': 'error',
 
       // --- carried forward from eslint-config-airbnb-base ---
       // airbnb-base was dropped (last published 2021, peers cap at eslint ^8,
@@ -225,7 +265,9 @@ export default tseslint.config(
       'no-useless-concat': 'error',
       'no-useless-rename': 'error',
       'no-useless-return': 'error',
-      'no-void': 'error',
+      // `void` is the idiom @typescript-eslint/no-floating-promises recommends
+      // for deliberately un-awaited promises, so it is allowed as a statement
+      'no-void': ['error', { allowAsStatement: true }],
       'object-shorthand': [
         'error',
         'always',
