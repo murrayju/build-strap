@@ -4,7 +4,7 @@ import path from 'path';
 
 import { onKillSignal } from './cp.js';
 import { cleanDir, copyDir } from './fs.js';
-import { buildLog } from './run.js';
+import { buildLog, errorMessage } from './run.js';
 
 let timer: NodeJS.Timeout | null = null;
 function throttledCallback(cbFn: undefined | (() => void)) {
@@ -71,11 +71,7 @@ export async function copySrc({
 
     watcher.on('all', (event, filePath) => {
       handleEvent(event, filePath).catch((e: unknown) => {
-        buildLog(
-          `Error handling ${event} for ${filePath}: ${
-            e instanceof Error ? e.message : String(e)
-          }`,
-        );
+        buildLog(`Error handling ${event} for ${filePath}: ${errorMessage(e)}`);
       });
     });
 

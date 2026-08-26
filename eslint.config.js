@@ -63,15 +63,11 @@ export default defineConfig(
       '@typescript-eslint/explicit-function-return-type': 'off',
       // --- type-aware rules kept as warnings ---
       // These flag pre-existing patterns throughout the codebase rather than
-      // new breakage, and mechanically "fixing" them risks behavior changes
-      // (see prefer-nullish-coalescing). They are surfaced as warnings so the
-      // build stays green while the debt is visible and can be paid down
-      // incrementally. The correctness-critical type-aware rules
-      // (no-floating-promises, no-misused-promises, await-thenable,
-      // return-await, no-base-to-string, ...) remain errors.
-      //
-      // `||` is deliberate in much of this codebase: it also falls back on the
-      // empty string, which `??` does not (e.g. NPM_TOKEN='').
+      // new breakage, and mechanically "fixing" them risks behavior changes.
+      // They are surfaced as warnings so the build stays green while the debt
+      // is visible and can be paid down incrementally. The correctness-critical
+      // type-aware rules (no-floating-promises, no-misused-promises,
+      // await-thenable, return-await, no-base-to-string, ...) remain errors.
       '@typescript-eslint/no-confusing-void-expression': 'warn',
       '@typescript-eslint/no-empty-function': 'warn',
       // `strict` bans non-null assertions, but several caching helpers rely on
@@ -87,7 +83,13 @@ export default defineConfig(
       '@typescript-eslint/no-unsafe-member-access': 'warn',
       '@typescript-eslint/no-unsafe-return': 'warn',
       '@typescript-eslint/no-unused-vars': 'error',
-      '@typescript-eslint/prefer-nullish-coalescing': 'warn',
+      // Off, not just downgraded: `||` is deliberate throughout this codebase
+      // because it also falls back on the empty string, which `??` does not.
+      // Config and credential values routinely arrive as '' from env vars and
+      // CLI args (e.g. NPM_TOKEN=''), where `||` must take the fallback. The
+      // autofix would silently change that behavior, so the rule is not a
+      // useful signal here.
+      '@typescript-eslint/prefer-nullish-coalescing': 'off',
       '@typescript-eslint/prefer-optional-chain': 'warn',
       '@typescript-eslint/prefer-reduce-type-parameter': 'warn',
       '@typescript-eslint/prefer-regexp-exec': 'warn',

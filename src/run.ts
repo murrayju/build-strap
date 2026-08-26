@@ -2,6 +2,28 @@ export function format(time: Date = new Date()): string {
   return time.toTimeString().replace(/.*(\d{2}:\d{2}:\d{2}).*/, '$1');
 }
 
+/**
+ * Extract a human readable message from an unknown caught value.
+ *
+ * `catch` and promise rejections are typed `unknown`, and anything can be
+ * thrown. Interpolating such a value directly is unsafe: the common
+ * `${e instanceof Error && e.message}` shorthand renders the string "false"
+ * whenever the thrown value is not an Error, hiding the real cause.
+ */
+export function errorMessage(err: unknown): string {
+  if (err instanceof Error) {
+    return err.message;
+  }
+  if (typeof err === 'string') {
+    return err;
+  }
+  try {
+    return JSON.stringify(err) ?? String(err);
+  } catch {
+    return String(err);
+  }
+}
+
 const silenceLogs = process.argv.includes('--silence-buildLog');
 
 /**

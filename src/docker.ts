@@ -15,7 +15,7 @@ import { cmdExists, isArm, isMac } from './env.js';
 import { downloadFile } from './fetch.js';
 import { mountDmg, unmountDmg } from './macos.js';
 import { getCfg, getPkgName, getPkgScope } from './pkg.js';
-import { buildLog } from './run.js';
+import { buildLog, errorMessage } from './run.js';
 import { getMainBranch, getVersion } from './version.js';
 
 export interface DockerConfig {
@@ -251,9 +251,9 @@ export async function dockerRmi(
       (err: unknown) => {
         if (ignoreErrors) {
           buildLog(
-            `Warning (ignored Error): Failed to rm image(s): ${
-              err instanceof Error ? err.message : String(err)
-            }`,
+            `Warning (ignored Error): Failed to rm image(s): ${errorMessage(
+              err,
+            )}`,
           );
         } else {
           throw err;

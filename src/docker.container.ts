@@ -3,7 +3,7 @@ import { throttle } from 'lodash-es';
 
 import { spawn, SpawnOptions } from './cp.js';
 import { parseDockerDate } from './docker.js';
-import { buildLog } from './run.js';
+import { buildLog, errorMessage } from './run.js';
 
 interface DockerContainerInspectOutput {
   State: {
@@ -157,9 +157,7 @@ export async function unthrottledDockerContainerLs({
               log(`<${this.name}> container stopped.`);
             } catch (e1) {
               log(
-                `Failed to stop <${this.name}> container: ${
-                  e1 instanceof Error && e1.message
-                }`,
+                `Failed to stop <${this.name}> container: ${errorMessage(e1)}`,
               );
               try {
                 log(`Killing container: <${this.name}>...`);
@@ -167,9 +165,9 @@ export async function unthrottledDockerContainerLs({
                 log(`<${this.name}> container killed.`);
               } catch (e2) {
                 log(
-                  `Failed to kill <${this.name}> container: ${
-                    e2 instanceof Error && e2.message
-                  }`,
+                  `Failed to kill <${this.name}> container: ${errorMessage(
+                    e2,
+                  )}`,
                 );
               }
             }
@@ -220,10 +218,9 @@ export async function dockerContainerStop(
     await spawn('docker', ['container', 'stop', ...ids]);
   } catch (e) {
     if (!ignoreErrors) {
-      throw new Error(
-        `Failed to stop container(s): ${e instanceof Error && e.message}`,
-        { cause: e },
-      );
+      throw new Error(`Failed to stop container(s): ${errorMessage(e)}`, {
+        cause: e,
+      });
     }
   }
 }
@@ -237,10 +234,9 @@ export async function dockerContainerKill(
     await spawn('docker', ['container', 'kill', ...ids]);
   } catch (e) {
     if (!ignoreErrors) {
-      throw new Error(
-        `Failed to kill container(s): ${e instanceof Error && e.message}`,
-        { cause: e },
-      );
+      throw new Error(`Failed to kill container(s): ${errorMessage(e)}`, {
+        cause: e,
+      });
     }
   }
 }
@@ -250,9 +246,7 @@ export async function dockerTryStopContainer(id: string | null, name = '') {
     try {
       await dockerContainerStop(id, false);
     } catch (e) {
-      buildLog(
-        `Failed to stop ${name} container: ${e instanceof Error && e.message}`,
-      );
+      buildLog(`Failed to stop ${name} container: ${errorMessage(e)}`);
     }
   }
 }
@@ -267,15 +261,14 @@ export async function dockerContainerRm(
   } catch (e) {
     if (ignoreErrors) {
       buildLog(
-        `Warning (ignored Error): Failed to remove container(s): ${
-          e instanceof Error && e.message
-        }`,
+        `Warning (ignored Error): Failed to remove container(s): ${errorMessage(
+          e,
+        )}`,
       );
     } else {
-      throw new Error(
-        `Failed to remove container(s): ${e instanceof Error && e.message}`,
-        { cause: e },
-      );
+      throw new Error(`Failed to remove container(s): ${errorMessage(e)}`, {
+        cause: e,
+      });
     }
   }
 }
