@@ -95,8 +95,11 @@ export const ensureGitLfsInstalled = async () => {
   await git(['lfs', 'install']);
 };
 
+// Git ignores include directives when you name a config file (for example with
+// --global). The --includes flag makes git follow them, so that values from
+// included files (for example ~/.gitconfig.local) are found.
 export const gitConfigRead = async (key: string, global = true) =>
-  gitOutput(['config', ...(global ? ['--global'] : []), key], {
+  gitOutput(['config', '--includes', ...(global ? ['--global'] : []), key], {
     rejectOnErrorCode: false,
   });
 
@@ -118,8 +121,10 @@ export const ensureGitConfigUserEmail = async (
     return;
   }
   buildLog('Setting up git user config...');
-  const name = await userQuestion('Enter your full name: ');
-  await gitConfigWrite('user.name', name, global);
+  if (!(await gitConfigRead('user.name', global))) {
+    const name = await userQuestion('Enter your full name: ');
+    await gitConfigWrite('user.name', name, global);
+  }
   const email = await userQuestion(emailPrompt, (input) =>
     emailRegex.test(input),
   );
