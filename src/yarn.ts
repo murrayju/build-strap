@@ -37,11 +37,16 @@ export async function yarn({
     ...spawnOptions,
   } as SpawnOptions;
 
+  const projectYarn = path.resolve('yarn');
+
   return (await fs.pathExists(localYarn))
     ? // prefer to use local copy of yarn
       spawn(process.execPath, [localYarn, ...args], spawnOpts)
-    : // fall back to globally installed yarn
-      spawn('yarn', args, spawnOpts);
+    : (await fs.pathExists(projectYarn))
+      ? // use the yarn wrapper script of the project (for example, with nub)
+        spawn(projectYarn, args, spawnOpts)
+      : // fall back to globally installed yarn
+        spawn('yarn', args, spawnOpts);
 }
 
 export const yarnFiles = ['./package.json', './yarn.lock'];

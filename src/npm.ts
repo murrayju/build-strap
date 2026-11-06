@@ -42,9 +42,11 @@ export async function npm({
   npmPath,
   spawnOptions,
 }: NpmOptions = {}): Promise<SpawnResult> {
+  // The node distribution puts npm next to the node binary.
   const localNpm = path.join(
     path.dirname(process.execPath),
-    'lib/node_modules/npm/bin/npm-cli.js',
+    platform() === 'win32' ? '' : '../lib',
+    'node_modules/npm/bin/npm-cli.js',
   );
 
   const spawnOpts = {

@@ -1,0 +1,6 @@
+#!/bin/bash
+set -euo pipefail
+
+# Run the yarn version that package.json pins (packageManager) with nub.
+yarnJs=$(./nub pm which)
+exec ./nub --node "$yarnJs" "$@"

@@ -6,10 +6,6 @@ build/
 dist/
 download/
 latest.build.*
-node*
 node_modules/
 npm-debug.log
 out/
-yarn
-yarn.bat
-yarn.ps1

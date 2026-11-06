@@ -30,7 +30,7 @@ jobs:
         run: ./bs publish --buildNum=$GITHUB_RUN_NUMBER
       - name: Capture version
         if: ${{ startsWith(github.ref, 'refs/tags/') }}
-        run: echo "VERSION=$(./yarn run --silent target printNpmVersion --buildNum=$GITHUB_RUN_NUMBER --silence-buildLog 2> /dev/null)" >> $GITHUB_ENV
+        run: echo "VERSION=$(./nub ./targets/run.ts printNpmVersion --buildNum=$GITHUB_RUN_NUMBER --silence-buildLog 2> /dev/null)" >> $GITHUB_ENV
       - name: GH Release
         uses: softprops/action-gh-release@v3
         if: ${{ startsWith(github.ref, 'refs/tags/') }}

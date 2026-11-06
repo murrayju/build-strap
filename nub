@@ -1,0 +1,45 @@
+#!/bin/bash
+set -euo pipefail
+
+# recommended to pin to a specific version
+# See https://github.com/nubjs/nub/releases
+version="0.10.0"
+version=${NUB_VERSION:-$version}
+
+downloadDir="$(pwd)/download"
+nubInstallDir="$downloadDir/nub"
+nubCmd="$nubInstallDir/bin/nub"
+needsInstall=true
+if [ -x "$nubCmd" ]; then
+  if [ "$version" = "latest" ]; then
+    # unpinned: any installed binary is good enough, avoid a network round trip
+    needsInstall=false
+  else
+    installedNubVersion=$("$nubCmd" --version 2>/dev/null | head -n 1 | sed -E 's/^(nub-)?v//' || true)
+    requestedNubVersion=$(echo "$version" | sed -E 's/^(nub-)?v//')
+    if [ "$installedNubVersion" = "$requestedNubVersion" ]; then
+      needsInstall=false
+    fi
+  fi
+fi
+
+if [ "$needsInstall" = true ]; then
+  # Send the install messages to stderr. Then stdout has only the output of nub.
+  {
+    echo "Installing nub $version to $nubInstallDir"
+    # The installer refreshes the global nub shims (from `nub pm shim`) in the home directory.
+    # Give the installer a home directory that does not exist, so it does not change them.
+    # Keep the curl config of the user.
+    userCurlHome="${CURL_HOME:-$HOME}"
+    curl -fsSL https://nubjs.com/install.sh |
+      HOME="$nubInstallDir/no-home" XDG_DATA_HOME="$nubInstallDir/no-home" CURL_HOME="$userCurlHome" \
+        NUB_INSTALL_DIR="$nubInstallDir" NUB_NO_MODIFY_PATH=1 bash -s -- "$version"
+  } >&2
+fi
+
+export PATH="$nubInstallDir/bin:$PATH"
+
+# This is better scoped than overriding XDG_DATA_HOME, which can impact child processes
+export npm_config_store_dir="${npm_config_store_dir:-$nubInstallDir/store}"
+
+XDG_CACHE_HOME="$nubInstallDir/cache" exec "$nubCmd" "$@"

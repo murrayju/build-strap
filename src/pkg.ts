@@ -25,10 +25,12 @@ export interface PackageJson {
   dependencies?: Record<string, string>;
   description?: string;
   devDependencies?: Record<string, string>;
+  devEngines?: Record<string, unknown>;
   engines?: Record<string, string>;
   license?: string;
   main?: string;
   name: string;
+  packageManager?: string;
   peerDependencies?: Record<string, string>;
   private?: boolean;
   repository?: string | { type: string; url: string };

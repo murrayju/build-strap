@@ -7,7 +7,7 @@ import { spawn } from '../src/index.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default async function tsc() {
-  await spawn('tsc', [], {
+  await spawn('node_modules/.bin/tsc', [], {
     cwd: path.resolve(__dirname, '..'),
     shell: true,
     stdio: 'inherit',

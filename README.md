@@ -10,13 +10,41 @@ This project builds itself, so take a look in the `targets/` folder for an examp
 [![devDependencies](https://img.shields.io/david/dev/murrayju/build-strap.svg)](https://david-dm.org/murrayju/build-strap?type=dev)
 
 ## Create a "zero dependency" bootstrapped build
-You can set up your project to build with (practically) no pre-requisite dependencies.
-- Copy the [build-strap-cli](https://github.com/murrayju/build-strap-cli/) into the root of your project.
+You can set up your project to build with (practically) no pre-requisite dependencies. [nub-strap](https://github.com/murrayju/nub-strap/) downloads a pinned version of [nub](https://nubjs.com) into the project. Nub then provides the pinned versions of node and yarn.
+- Copy the `nub` script from nub-strap into the root of your project, and pin the nub version in it.
 
 ```
-curl -o bs https://raw.githubusercontent.com/murrayju/build-strap-cli/master/bs && chmod +x bs
-curl -o bs.ps1 https://raw.githubusercontent.com/murrayju/build-strap-cli/master/bs.ps1
-curl -o bs.bat https://raw.githubusercontent.com/murrayju/build-strap-cli/master/bs.bat
+curl -o nub https://raw.githubusercontent.com/murrayju/nub-strap/main/nub && chmod +x nub
+```
+
+- Pin the node and yarn versions in your `package.json`.
+
+```
+{
+  "devEngines": {
+    "runtime": { "name": "node", "version": "24.18.0" }
+  },
+  "packageManager": "yarn@1.22.22"
+}
+```
+
+- Add a `yarn` script, which runs the pinned yarn with nub.
+
+```
+#!/bin/bash
+set -euo pipefail
+
+yarnJs=$(./nub pm which)
+exec ./nub --node "$yarnJs" "$@"
+```
+
+- Add a `bs` script, which installs dependencies and runs your build targets.
+
+```
+#!/bin/bash
+
+./yarn install
+exec ./nub ./targets/run.ts "$@"
 ```
 
 ## Add the dependency reference
@@ -32,8 +60,6 @@ By default, the build tools read project-specific configuration from your `packa
   "name": "your-project-name",
   "version": "1.2.3",
   "buildStrap": {
-    "nodeVersion": "24.18.0",
-    "yarnVersion": "1.22.22",
     "repoType": "git",
     "copyright": "your company",
     "mainBranch": "main",
@@ -94,7 +120,7 @@ setPkg(pkg);
 ### runCli
 Useful when building your own build from scratch. Helps to interpret CLI arguments and invoke js files as build targets. Uses `buildLog` to timestamp everything.
 
-This example should serve as your entrypoint (from `yarn run`).
+This example should serve as your entrypoint (for example, `./nub ./targets/run.ts`).
 ```
 import { run, runCli, setPkg } from 'build-strap';
 import pkg from '../package.json';

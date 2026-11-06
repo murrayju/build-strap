@@ -10,8 +10,16 @@ export default async function copy() {
   await fs.ensureDir('./dist');
   await copyDir('./build/src', './dist/src');
   const version = await getVersion();
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { buildStrap, devDependencies, scripts, ...rest } = getPkg();
+  /* eslint-disable @typescript-eslint/no-unused-vars */
+  const {
+    buildStrap,
+    devDependencies,
+    devEngines,
+    packageManager,
+    scripts,
+    ...rest
+  } = getPkg();
+  /* eslint-enable @typescript-eslint/no-unused-vars */
   await Promise.all([
     fs.writeFile(
       './dist/package.json',
