@@ -32,12 +32,13 @@ export function getRepoType(): Promise<RepoType> {
   const { repoType } = getCfg();
 
   return Promise.resolve(
-    (repoType as RepoType) ||
-      (fs.existsSync('./.git')
+    repoType
+      ? RepoType[repoType]
+      : fs.existsSync('./.git')
         ? RepoType.git
         : fs.existsSync('./.hg')
           ? RepoType.hg
-          : RepoType.unknown),
+          : RepoType.unknown,
   );
 }
 
