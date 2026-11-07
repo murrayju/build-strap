@@ -385,13 +385,14 @@ export type DockerStatus = 'running' | 'stopped' | 'unresponsive';
 // `docker info` writes one of these when the CLI cannot reach a daemon that is
 // not started. The text differs between platforms and Docker versions. For
 // example, Docker 29 on macOS reports "failed to connect to the docker API".
+// Match only connection diagnostics here. A plugin warning can contain a
+// generic filesystem error, and such a warning must not hide a healthy daemon.
 const dockerStoppedMarkers = [
   'cannot connect to the docker daemon',
   'is the docker daemon running',
   'failed to connect to the docker api',
   'check if the path is correct and if the daemon is running',
-  'no such file or directory',
-  'the system cannot find the file specified',
+  'error during connect',
 ];
 
 // The daemon answered, but with an error. Older Docker versions exit 0 and

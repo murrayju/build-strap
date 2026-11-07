@@ -43,6 +43,25 @@ const permissionDeniedInfo =
   'permission denied while trying to connect to the docker API at ' +
   'unix:///var/run/docker.sock';
 
+// A client plugin warning must not change the status of a healthy daemon.
+const pluginWarningInfo =
+  `${clientInfo}
+
+WARNING: Plugin "bad" is not valid: failed to fetch metadata: ` +
+  'fork/exec /usr/local/lib/docker/cli-plugins/docker-bad: ' +
+  'no such file or directory';
+
+// A daemon error can also mention a missing file.
+const daemonMissingFileInfo =
+  `ERROR: Error response from daemon: ` +
+  'open /var/lib/docker/tmp: no such file or directory\n' +
+  'errors pretty printing info';
+
+// Real output from Docker 29.8.2 when the socket breaks during the request.
+const transportErrorInfo =
+  'error during connect: Get "http://%2Ftmp%2Fdocker.sock/v1.56/info": ' +
+  'net/http: HTTP/1.x transport connection broken: malformed HTTP status code';
+
 void describe('classifyDockerInfo', () => {
   void it('reports running when docker info succeeds', () => {
     assert.equal(classifyDockerInfo(0, clientInfo), 'running');
@@ -64,12 +83,29 @@ void describe('classifyDockerInfo', () => {
   void it('reports unresponsive when the socket is not accessible', () => {
     assert.equal(classifyDockerInfo(1, permissionDeniedInfo), 'unresponsive');
   });
+
+  void it('ignores client warnings when the daemon is healthy', () => {
+    assert.equal(classifyDockerInfo(0, pluginWarningInfo), 'running');
+  });
+
+  void it('reports unresponsive for a daemon error about a missing file', () => {
+    assert.equal(classifyDockerInfo(1, daemonMissingFileInfo), 'unresponsive');
+  });
+
+  void it('reports stopped when the connection breaks before a response', () => {
+    assert.equal(classifyDockerInfo(1, transportErrorInfo), 'stopped');
+  });
 });
 
 void describe('docker status commands', () => {
   let fakeBinDir: string;
   let openLog: string;
   let originalPath: string | undefined;
+  let tempRoot: string;
+
+  // Quote a value for the generated shell scripts, so a TMPDIR with spaces or
+  // quotes cannot break the fake docker/open commands.
+  const shellQuote = (value: string) => `'${value.replaceAll("'", "'\\''")}'`;
 
   const writeScript = async (name: string, content: string) => {
     const file = path.join(fakeBinDir, name);
@@ -109,9 +145,9 @@ exit ${exitCode}
     await writeScript(
       'docker',
       `#!/bin/sh
-count=$(cat ${callsFile} 2>/dev/null || echo 0)
+count=$(cat ${shellQuote(callsFile)} 2>/dev/null || echo 0)
 count=$((count + 1))
-echo "$count" > ${callsFile}
+echo "$count" > ${shellQuote(callsFile)}
 case "$count" in
 ${cases}
 *)
@@ -127,12 +163,16 @@ esac
 
   before(async () => {
     originalPath = process.env.PATH;
-    fakeBinDir = await fs.mkdtemp(
-      path.join(os.tmpdir(), 'build-strap-docker-'),
-    );
+    tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'build-strap-docker-'));
+    // Include a space in the path to catch unquoted shell variables.
+    fakeBinDir = path.join(tempRoot, 'bin with space');
+    await fs.mkdir(fakeBinDir);
     openLog = path.join(fakeBinDir, 'open.log');
     // The fake `open` records that a build tried to start a Docker app.
-    await writeScript('open', `#!/bin/sh\necho "$@" >> ${openLog}\n`);
+    await writeScript(
+      'open',
+      `#!/bin/sh\necho "$@" >> ${shellQuote(openLog)}\n`,
+    );
     process.env.PATH = [fakeBinDir, originalPath]
       .filter(Boolean)
       .join(path.delimiter);
@@ -140,7 +180,7 @@ esac
 
   after(async () => {
     process.env.PATH = originalPath;
-    await fs.rm(fakeBinDir, { force: true, recursive: true });
+    await fs.rm(tempRoot, { force: true, recursive: true });
   });
 
   void it('reports docker as running only when docker info succeeds', async () => {
