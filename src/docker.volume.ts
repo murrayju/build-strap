@@ -1,5 +1,3 @@
-import { throttle } from 'lodash-es';
-
 import { spawn } from './cp.js';
 import { errorMessage } from './run.js';
 
@@ -27,8 +25,6 @@ interface DockerVolumeLsOutput {
   Scope: string;
 }
 
-// calling this function in rapid succession can lead to errors.
-// prefer throttled version
 export async function unthrottledDockerVolumeLs({
   filter,
 }: DockerVolumeLsOptions = {}): Promise<DockerVolume[]> {
@@ -50,7 +46,7 @@ export async function unthrottledDockerVolumeLs({
 
       return {
         driver,
-        inspect: async () => (await dockerVolumeInspect(name))?.[0] || null,
+        inspect: async () => (await dockerVolumeInspect(name)).at(0) || null,
         labels: Labels.split(',').map((l) => l.trim()),
         mountPoint,
         name,
@@ -61,22 +57,15 @@ export async function unthrottledDockerVolumeLs({
     .filter((v) => v.name && (typeof filter === 'function' ? filter(v) : true));
 }
 
-export const dockerVolumeLs: (
-  options?: DockerVolumeLsOptions,
-) => undefined | Promise<DockerVolume[]> = throttle(
-  unthrottledDockerVolumeLs,
-  500,
-  {
-    trailing: false,
-  },
-);
+// The two names are the same function. Both stay exported for compatibility.
+export const dockerVolumeLs = unthrottledDockerVolumeLs;
 
 export async function dockerVolumeFind(
   search: string,
   options?: DockerVolumeLsOptions,
 ): Promise<null | DockerVolume> {
   return (
-    (await dockerVolumeLs(options))?.find(
+    (await dockerVolumeLs(options)).find(
       (v) => v.name === search || v.name.startsWith(search),
     ) ?? null
   );
@@ -120,8 +109,6 @@ export async function dockerVolumeRm(
   }
 }
 
-// calling this function in rapid succession can lead to errors.
-// prefer throttled version
 export async function unthrottledDockerVolumeInspect(
   id: string | string[],
 ): Promise<DockerVolumeInspectOutput[]> {
@@ -139,10 +126,5 @@ export async function unthrottledDockerVolumeInspect(
     .map((line) => JSON.parse(line.trim()) as DockerVolumeInspectOutput);
 }
 
-export const dockerVolumeInspect: (
-  id: string | string[],
-) => undefined | Promise<DockerVolumeInspectOutput[]> = throttle(
-  unthrottledDockerVolumeInspect,
-  500,
-  { trailing: true },
-);
+// The two names are the same function. Both stay exported for compatibility.
+export const dockerVolumeInspect = unthrottledDockerVolumeInspect;

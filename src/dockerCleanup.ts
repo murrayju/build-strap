@@ -49,7 +49,7 @@ export const dockerContainerCleanup = async ({
     filter: (c) => c.exited,
   });
   if (dryRun) {
-    if (toClean) {
+    if (toClean.length) {
       buildLog(
         `Containers to delete (dry run):\n  ${toClean
           .map((c) => c.id)
@@ -58,7 +58,7 @@ export const dockerContainerCleanup = async ({
     } else {
       buildLog('No containers to delete (dry run)');
     }
-  } else if (toClean) {
+  } else {
     await Promise.all(toClean.map(async (c) => c.rm(true)));
   }
 };

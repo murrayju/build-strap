@@ -1,5 +1,3 @@
-import { throttle } from 'lodash-es';
-
 import { spawn } from './cp.js';
 import { parseDockerDate } from './docker.js';
 
@@ -29,8 +27,6 @@ interface DockerNetworkLsOutput {
   Scope: string;
 }
 
-// calling this function in rapid succession can lead to errors.
-// prefer throttled version
 export async function unthrottledDockerNetworkLs({
   filter,
 }: DockerNetworkLsOptions = {}): Promise<DockerNetwork[]> {
@@ -67,22 +63,15 @@ export async function unthrottledDockerNetworkLs({
     .filter((n) => n.id && (typeof filter === 'function' ? filter(n) : true));
 }
 
-export const dockerNetworkLs: (
-  options?: DockerNetworkLsOptions,
-) => Promise<DockerNetwork[]> | undefined = throttle(
-  unthrottledDockerNetworkLs,
-  500,
-  {
-    trailing: false,
-  },
-);
+// The two names are the same function. Both stay exported for compatibility.
+export const dockerNetworkLs = unthrottledDockerNetworkLs;
 
 export async function dockerNetworkFind(
   networkName: string,
   options?: DockerNetworkLsOptions,
 ): Promise<DockerNetwork | null> {
   return (
-    (await dockerNetworkLs(options))?.find(
+    (await dockerNetworkLs(options)).find(
       (n) => n.name === networkName || n.id === networkName,
     ) || null
   );

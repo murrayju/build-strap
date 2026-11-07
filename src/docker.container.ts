@@ -1,5 +1,4 @@
 import bytes from 'bytes';
-import { throttle } from 'lodash-es';
 
 import { spawn, SpawnOptions } from './cp.js';
 import { parseDockerDate } from './docker.js';
@@ -63,8 +62,6 @@ interface DockerContainerLsOutput {
   Status: string;
 }
 
-// calling this function in rapid succession can lead to errors.
-// prefer throttled version
 export async function unthrottledDockerContainerLs({
   all,
   filter,
@@ -116,7 +113,7 @@ export async function unthrottledDockerContainerLs({
         exited: status.startsWith('Exited'),
         id,
         image,
-        inspect: async () => (await dockerContainerInspect(id))?.[0],
+        inspect: async () => (await dockerContainerInspect(id)).at(0),
         async isRunning(): Promise<boolean> {
           try {
             return (await this.inspect())?.State.Running || false;
@@ -187,22 +184,15 @@ export async function unthrottledDockerContainerLs({
     .filter((c) => c.id && (typeof filter === 'function' ? filter(c) : true));
 }
 
-export const dockerContainerLs: (
-  options: DockerContainerLsOptions | undefined,
-) => Promise<DockerContainer[]> | undefined = throttle(
-  unthrottledDockerContainerLs,
-  500,
-  {
-    trailing: false,
-  },
-);
+// The two names are the same function. Both stay exported for compatibility.
+export const dockerContainerLs = unthrottledDockerContainerLs;
 
 export async function dockerContainerFind(
   search: string,
   options?: DockerContainerLsOptions,
 ): Promise<DockerContainer | null> {
   return (
-    (await dockerContainerLs(options))?.find(
+    (await dockerContainerLs(options)).find(
       (c) =>
         c.name === search ||
         c.id.startsWith(search) ||
@@ -300,15 +290,8 @@ export async function unthrottledDockerContainerInspect(
     .filter((line) => !!line.trim())
     .map((line) => JSON.parse(line.trim()) as DockerContainerInspectOutput);
 }
-export const dockerContainerInspect: (
-  id: string | string[],
-) => Promise<DockerContainerInspectOutput[]> | undefined = throttle(
-  unthrottledDockerContainerInspect,
-  500,
-  {
-    trailing: false,
-  },
-);
+// The two names are the same function. Both stay exported for compatibility.
+export const dockerContainerInspect = unthrottledDockerContainerInspect;
 
 interface DockerContainerRunDaemonArgs {
   cmd?: string[];
