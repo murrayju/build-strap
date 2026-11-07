@@ -15,7 +15,7 @@
   "devEngines": {
     "runtime": {
       "name": "node",
-      "version": "24.22.2"
+      "version": "26.13.0"
     },
     "packageManager": {
       "name": "nub",
@@ -53,7 +53,7 @@
     "tar": "^7.1.0"
   },
   "devDependencies": {
-    "@tsconfig/node24": "^24.0.4",
+    "@tsconfig/node26": "^26.0.1",
     "@types/bytes": "^3.1.4",
     "@types/cross-spawn": "^6.0.6",
     "@types/fs-extra": "^11.0.4",
