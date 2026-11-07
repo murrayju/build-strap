@@ -91,6 +91,8 @@ The version being built is determined as follows:
 
 For untagged builds, the base version comes from the `version` field in `package.json` and the build number comes from `--buildNum=` (or the `BUILD_NUMBER` environment variable). For release builds, the version comes from the git tag, and the build refuses to publish if the tagged commit is not contained in `main`.
 
+On GitHub Actions, only the build for the tag push is a release build. The branch build of the same commit stays an untagged build, also when it already sees the tag. Elsewhere, a build is a release build when a semver tag points at the commit being built.
+
 ## Write Your Build Script
 See the reference implementations (below) for a complete example of a robust build environment. The library exports many useful functions. Here are some of the most important (see source for more):
 

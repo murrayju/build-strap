@@ -99,6 +99,9 @@ export function parseSemverTag(tag: string): null | SemverTag {
  * The semver tag pointing at the commit being built, if any. This is what makes
  * a build a release build: releases are triggered by pushing a semver tag.
  * When multiple semver tags point at the same commit, the highest one wins.
+ * On GitHub Actions, only a tag build is a release build. A branch or pull
+ * request build can see the tag when the tag is pushed soon after the commit.
+ * Then both builds would try to publish the same release.
  */
 export async function getReleaseTag(): Promise<null | SemverTag> {
   const overrideTag =
@@ -114,6 +117,9 @@ export async function getReleaseTag(): Promise<null | SemverTag> {
       throw new Error(`\`${overrideTag}\` is not a valid semver release tag.`);
     }
     return parsed;
+  }
+  if (process.env.GITHUB_REF) {
+    return null;
   }
   if ((await getRepoType()) !== RepoType.git) {
     return null;
