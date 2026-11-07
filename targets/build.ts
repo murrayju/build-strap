@@ -2,7 +2,7 @@ import { clean, run } from '../src/index.js';
 
 import copy from './copy.js';
 import lint from './lint.js';
-import tsc from './tsc.js';
+import test from './test.js';
 
 /**
  * Compiles the project from source files into a distributable
@@ -11,6 +11,6 @@ import tsc from './tsc.js';
 export default async function build() {
   await run(clean);
   await run(lint);
-  await run(tsc);
+  await run(test);
   await run(copy);
 }

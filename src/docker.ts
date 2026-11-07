@@ -380,45 +380,101 @@ export async function copyFilesFromDockerImage({
   }
 }
 
-export const dockerIsRunning = async () => {
+export type DockerStatus = 'running' | 'stopped' | 'unresponsive';
+
+// `docker info` writes one of these when the CLI cannot reach a daemon that is
+// not started. Any other failure means that the daemon answered with an error.
+const dockerStoppedMarkers = [
+  'cannot connect to the docker daemon',
+  'is the docker daemon running',
+  'error during connect',
+];
+
+/**
+ * Classify the result of `docker info`.
+ *
+ * Docker can be running but unresponsive. In that case the daemon returns an
+ * error, for example "Bad response from Docker engine". A daemon that is not
+ * started reports that it cannot connect instead. A build must not try to
+ * start an unresponsive daemon, because the start command has no effect.
+ */
+export const classifyDockerInfo = (
+  exitCode: number,
+  output: string,
+): DockerStatus => {
+  const lower = output.toLowerCase();
+  if (dockerStoppedMarkers.some((marker) => lower.includes(marker))) {
+    return 'stopped';
+  }
+  return exitCode === 0 ? 'running' : 'unresponsive';
+};
+
+export const getDockerStatus = async (): Promise<DockerStatus> => {
   try {
-    const result: string = (
-      await spawn('docker', ['info'], {
-        captureOutput: true,
-      })
-    ).output;
-    return !result.toLowerCase().includes('error');
+    const { code, output } = await spawn('docker', ['info'], {
+      captureOutput: true,
+      rejectOnErrorCode: false,
+    });
+    return classifyDockerInfo(code, output);
   } catch {
-    return false;
+    // The docker binary is missing or could not start.
+    return 'stopped';
+  }
+};
+
+export const dockerIsRunning = async () =>
+  (await getDockerStatus()) === 'running';
+
+export const throwIfDockerUnresponsive = (status: DockerStatus) => {
+  if (status === 'unresponsive') {
+    throw new Error(
+      'Docker is running but unresponsive. Restart Docker and try again.',
+    );
+  }
+};
+
+/**
+ * Wait until `docker info` succeeds. This runs after the Docker app is started,
+ * so it tolerates transient daemon errors until the timeout.
+ */
+export const waitForDockerToStart = async (
+  timeoutSeconds = 600,
+  name = 'Docker',
+) => {
+  let attempts = 0;
+  for (;;) {
+    const status = await getDockerStatus();
+    if (status === 'running') {
+      if (attempts >= 5) {
+        process.stdout.write('\n');
+      }
+      return;
+    }
+    attempts += 1;
+    if (attempts % 5 === 0) {
+      process.stdout.write('.');
+    }
+    if (attempts > timeoutSeconds) {
+      throw new Error(`Timeout starting ${name} (last status: ${status})`);
+    }
+    await new Promise((resolve) => {
+      setTimeout(resolve, 1000);
+    });
   }
 };
 
 export const ensureDockerRunning = async (timeoutSeconds = 600) => {
-  if (!(await dockerIsRunning())) {
-    if (isMac()) {
-      buildLog('docker is not running, starting it...');
-      await spawn('open', ['-a', '/Applications/Docker.app']);
-
-      let attempts = 0;
-      while (!(await dockerIsRunning())) {
-        attempts += 1;
-        if (attempts % 5 === 0) {
-          process.stdout.write('.');
-        }
-        if (attempts > timeoutSeconds) {
-          throw new Error('Timeout starting docker');
-        }
-        await new Promise((resolve) => {
-          setTimeout(resolve, 1000);
-        });
-      }
-      if (attempts >= 5) {
-        process.stdout.write('\n');
-      }
-    } else {
-      throw new Error('Docker is not running, please start it manually');
-    }
+  const status = await getDockerStatus();
+  if (status === 'running') {
+    return;
   }
+  throwIfDockerUnresponsive(status);
+  if (!isMac()) {
+    throw new Error('Docker is not running, please start it manually');
+  }
+  buildLog('docker is not running, starting it...');
+  await spawn('open', ['-a', '/Applications/Docker.app']);
+  await waitForDockerToStart(timeoutSeconds);
 };
 
 export const ensureDockerInstalled = async () => {
