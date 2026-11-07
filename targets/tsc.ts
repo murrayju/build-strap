@@ -7,9 +7,9 @@ import { spawn } from '../src/index.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default async function tsc() {
-  await spawn('node_modules/.bin/tsc', [], {
+  // Use the current node binary, not the slow `node` shim from nub
+  await spawn(process.execPath, ['node_modules/.bin/tsc'], {
     cwd: path.resolve(__dirname, '..'),
-    shell: true,
     stdio: 'inherit',
   });
 }

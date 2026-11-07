@@ -1,7 +1,7 @@
 import { clean, run } from '../src/index.js';
 
 import copy from './copy.js';
-import eslint from './eslint.js';
+import lint from './lint.js';
 import tsc from './tsc.js';
 import yarn from './yarn.js';
 
@@ -12,7 +12,7 @@ import yarn from './yarn.js';
 export default async function build() {
   await run(clean);
   await run(yarn);
-  await run(eslint);
+  await run(lint);
   await run(tsc);
   await run(copy);
 }
