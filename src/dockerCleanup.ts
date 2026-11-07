@@ -1,6 +1,3 @@
-import { uniq } from 'lodash-es';
-import moment from 'moment';
-
 import { dockerContainerLs } from './docker.container.js';
 import {
   DockerImage,
@@ -100,40 +97,45 @@ export const dockerImageCleanup = async ({
   // only match images more than an hour old, AND without a :latest* tag
   const filterOld: DockerImageFilter = (m: DockerImage) =>
     purgeAll ||
-    (filterLatest(m) && moment().subtract(1, 'h').isAfter(m.created));
+    (filterLatest(m) && m.created.getTime() < Date.now() - 60 * 60 * 1000);
 
-  const uniqueList: string[] = uniq([
-    // the things that we know were just built by us
-    // remove all tags from the given repos with a matching `buildImageIds`, except for :latest*
-    ...(await flatten(
-      repos.map((r) =>
-        buildImageIds.map(async (b) => getDockerTags(b, r, true, filterLatest)),
-      ),
-    )),
+  const uniqueList: string[] = [
+    ...new Set([
+      // the things that we know were just built by us
+      // remove all tags from the given repos with a matching `buildImageIds`, except for :latest*
+      ...(await flatten(
+        repos.map((r) =>
+          buildImageIds.map(async (b) =>
+            getDockerTags(b, r, true, filterLatest),
+          ),
+        ),
+      )),
 
-    // unconditionally delete explicitly passed images/ids
-    ...images,
+      // unconditionally delete explicitly passed images/ids
+      ...images,
 
-    // images in the given `repos` without a tag, older than 1hr
-    ...(await flatten(
-      repos.map(async (r) => getUntaggedDockerIds(r, filterOld)),
-    )),
+      // images in the given `repos` without a tag, older than 1hr
+      ...(await flatten(
+        repos.map(async (r) => getUntaggedDockerIds(r, filterOld)),
+      )),
 
-    // images with no repo and no tag
-    ...(
-      await dockerImages(
-        null,
-        (m) => m.repository === '<none>' && m.tag === '<none>' && filterOld(m),
-      )
-    ).map((m) => m.id),
-
-    // any leftover tags from prior builds (only if purgeAll or purgeOld)
-    ...(purgeAll || purgeOld
-      ? await flatten(
-          repos.map(async (r) => getDockerTags(null, r, true, filterOld)),
+      // images with no repo and no tag
+      ...(
+        await dockerImages(
+          null,
+          (m) =>
+            m.repository === '<none>' && m.tag === '<none>' && filterOld(m),
         )
-      : []),
-  ]);
+      ).map((m) => m.id),
+
+      // any leftover tags from prior builds (only if purgeAll or purgeOld)
+      ...(purgeAll || purgeOld
+        ? await flatten(
+            repos.map(async (r) => getDockerTags(null, r, true, filterOld)),
+          )
+        : []),
+    ]),
+  ];
 
   if (dryRun) {
     buildLog(`Images to delete (dry run):\n  ${uniqueList.join('\n  ')}`);

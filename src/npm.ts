@@ -53,7 +53,6 @@ export async function npm({
 
   const spawnOpts = {
     env: process.env,
-    shell: true,
     stdio: 'inherit',
     ...spawnOptions,
   } as SpawnOptions;

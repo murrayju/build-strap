@@ -1,8 +1,7 @@
 import crypto from 'crypto';
 import fs from 'fs-extra';
 import path from 'path';
-import { Readable } from 'stream';
-import StreamCounter from 'stream-counter';
+import { Readable, Writable } from 'stream';
 import { create, type TarOptionsWithAliasesAsyncNoFile } from 'tar';
 
 import { buildLog } from './run.js';
@@ -40,14 +39,17 @@ export const generateFileHash = async (
 
 const countBytes = async (stream: Pick<Readable, 'pipe'>): Promise<number> =>
   new Promise((resolve, reject) => {
-    const counter = new StreamCounter();
+    let byteCount = 0;
+    const counter = new Writable({
+      write(chunk: Buffer, _encoding, callback) {
+        byteCount += chunk.length;
+        callback();
+      },
+    });
     stream
       .pipe(counter)
       .on('finish', () => {
-        resolve(counter.bytes);
-      })
-      .on('end', () => {
-        resolve(counter.bytes);
+        resolve(byteCount);
       })
       .on('error', (err: Error) => {
         reject(err);

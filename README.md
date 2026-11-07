@@ -6,8 +6,6 @@ This project builds itself, so take a look in the `targets/` folder for an examp
 [![CI Build](https://github.com/murrayju/build-strap/workflows/CI%20Build/badge.svg?branch=main)](https://github.com/murrayju/build-strap/actions?query=workflow%3A%22CI+Build%22)
 [![version](https://img.shields.io/github/v/tag/murrayju/build-strap.svg?label=version&sort=semver)](https://github.com/murrayju/build-strap/releases/latest)
 [![npm](https://img.shields.io/npm/v/build-strap)](https://npmjs.org/package/build-strap)
-[![dependencies](https://img.shields.io/david/murrayju/build-strap.svg)](https://david-dm.org/murrayju/build-strap)
-[![devDependencies](https://img.shields.io/david/dev/murrayju/build-strap.svg)](https://david-dm.org/murrayju/build-strap?type=dev)
 
 ## Create a "zero dependency" bootstrapped build
 You can set up your project to build with (practically) no pre-requisite dependencies. [nub-strap](https://github.com/murrayju/nub-strap/) downloads a pinned version of [nub](https://nubjs.com) into the project. Nub then provides the pinned version of node, and is also the package manager.

@@ -32,7 +32,6 @@ export async function yarn({
 
   const spawnOpts = {
     env: process.env,
-    shell: true,
     stdio: 'inherit',
     ...spawnOptions,
   } as SpawnOptions;
@@ -216,7 +215,6 @@ export async function yarnPublish({
         FORCE_COLOR: 'true',
         NPM_TOKEN: authToken,
       },
-      shell: true,
       stdio: 'inherit',
     },
   });

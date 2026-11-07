@@ -1,6 +1,7 @@
 import fs from 'fs-extra';
-import fetch from 'node-fetch';
 import path from 'path';
+import { Readable } from 'stream';
+import { pipeline } from 'stream/promises';
 
 export const downloadFile = async (
   url: string,
@@ -16,10 +17,5 @@ export const downloadFile = async (
   if (overwrite) {
     await fs.remove(saveAs);
   }
-  const fileStream = fs.createWriteStream(saveAs);
-  await new Promise((resolve, reject) => {
-    body.pipe(fileStream);
-    body.on('error', reject);
-    fileStream.on('finish', resolve);
-  });
+  await pipeline(Readable.fromWeb(body), fs.createWriteStream(saveAs));
 };
