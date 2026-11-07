@@ -126,17 +126,17 @@ export async function unthrottledDockerVolumeInspect(
   id: string | string[],
 ): Promise<DockerVolumeInspectOutput[]> {
   const ids = Array.isArray(id) ? id : [id];
+  // With --format, docker writes one JSON object per line, not an array
   return (
-    (JSON.parse(
-      (
-        await spawn(
-          'docker',
-          ['volume', 'inspect', '--format', '{{json .}}', ...ids],
-          { captureOutput: true },
-        )
-      ).output.trim(),
-    ) as null | DockerVolumeInspectOutput[]) || []
-  );
+    await spawn(
+      'docker',
+      ['volume', 'inspect', '--format', '{{json .}}', ...ids],
+      { captureOutput: true },
+    )
+  ).output
+    .split('\n')
+    .filter((line) => !!line.trim())
+    .map((line) => JSON.parse(line.trim()) as DockerVolumeInspectOutput);
 }
 
 export const dockerVolumeInspect: (
