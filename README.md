@@ -20,7 +20,7 @@ curl -o nub https://raw.githubusercontent.com/murrayju/nub-strap/main/nub && chm
 ```
 {
   "devEngines": {
-    "runtime": { "name": "node", "version": "24.18.0" },
+    "runtime": { "name": "node", "version": "26.13.0" },
     "packageManager": { "name": "nub", "version": "^0.10.0", "onFail": "ignore" }
   }
 }
