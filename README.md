@@ -10,32 +10,22 @@ This project builds itself, so take a look in the `targets/` folder for an examp
 [![devDependencies](https://img.shields.io/david/dev/murrayju/build-strap.svg)](https://david-dm.org/murrayju/build-strap?type=dev)
 
 ## Create a "zero dependency" bootstrapped build
-You can set up your project to build with (practically) no pre-requisite dependencies. [nub-strap](https://github.com/murrayju/nub-strap/) downloads a pinned version of [nub](https://nubjs.com) into the project. Nub then provides the pinned versions of node and yarn.
+You can set up your project to build with (practically) no pre-requisite dependencies. [nub-strap](https://github.com/murrayju/nub-strap/) downloads a pinned version of [nub](https://nubjs.com) into the project. Nub then provides the pinned version of node, and is also the package manager.
 - Copy the `nub` script from nub-strap into the root of your project, and pin the nub version in it.
 
 ```
 curl -o nub https://raw.githubusercontent.com/murrayju/nub-strap/main/nub && chmod +x nub
 ```
 
-- Pin the node and yarn versions in your `package.json`.
+- Pin the node version in your `package.json`, and set nub as the package manager (`./nub pm use nub` does this, and converts an existing lockfile to `nub.lock`).
 
 ```
 {
   "devEngines": {
-    "runtime": { "name": "node", "version": "24.18.0" }
-  },
-  "packageManager": "yarn@1.22.22"
+    "runtime": { "name": "node", "version": "24.18.0" },
+    "packageManager": { "name": "nub", "version": "^0.10.0", "onFail": "ignore" }
+  }
 }
-```
-
-- Add a `yarn` script, which runs the pinned yarn with nub.
-
-```
-#!/bin/bash
-set -euo pipefail
-
-yarnJs=$(./nub pm which)
-exec ./nub --node "$yarnJs" "$@"
 ```
 
 - Add a `bs` script, which installs dependencies and runs your build targets.
@@ -43,14 +33,14 @@ exec ./nub --node "$yarnJs" "$@"
 ```
 #!/bin/bash
 
-./yarn install
+./nub install
 exec ./nub ./targets/run.ts "$@"
 ```
 
 ## Add the dependency reference
 Add `build-strap` to your `package.json` (likely in the `devDependencies` section).
 ```
-yarn add -D build-strap
+./nub add -D build-strap
 ```
 
 ## Add meta information to your `package.json`

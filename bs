@@ -1,4 +1,4 @@
 #!/bin/bash
 
-./yarn install
+./nub install
 exec ./nub ./targets/run.ts "$@"

@@ -13,13 +13,13 @@ export default async function lint() {
   const options = { rejectOnErrorCode: false, stdio: 'inherit' } as const;
   const { code: oxlintCode } = await spawn(
     process.execPath,
-    ['node_modules/.bin/oxlint', ...(autoFix ? ['--fix'] : [])],
+    ['node_modules/oxlint/bin/oxlint', ...(autoFix ? ['--fix'] : [])],
     options,
   );
   const { code: oxfmtCode } = await spawn(
     process.execPath,
     [
-      'node_modules/.bin/oxfmt',
+      'node_modules/oxfmt/bin/oxfmt',
       autoFix ? '--write' : '--check',
       'src',
       'targets',

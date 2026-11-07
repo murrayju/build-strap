@@ -18,9 +18,16 @@
     "runtime": {
       "name": "node",
       "version": "24.22.2"
+    },
+    "packageManager": {
+      "name": "nub",
+      "version": "^0.10.0",
+      "onFail": "ignore"
     }
   },
-  "packageManager": "yarn@1.22.22",
+  "resolutions": {
+    "minimatch": "^11.0.5"
+  },
   "buildStrap": {
     "repoType": "git",
     "copyright": "Justin Murray",
@@ -56,14 +63,12 @@
     "@types/cross-spawn": "^6.0.6",
     "@types/fs-extra": "^11.0.4",
     "@types/lodash-es": "^4.17.12",
+    "@types/node": "^26.6.6",
     "@types/stream-counter": "^1.0.3",
     "eslint-plugin-perfectionist": "^5.13.0",
     "oxfmt": "^0.77.0",
     "oxlint": "^1.92.0",
     "oxlint-tsgolint": "^7.0.2006",
     "typescript": "^7.0.2"
-  },
-  "resolutions": {
-    "minimatch": "^11.0.5"
   }
 }

@@ -3,7 +3,6 @@ import { clean, run } from '../src/index.js';
 import copy from './copy.js';
 import lint from './lint.js';
 import tsc from './tsc.js';
-import yarn from './yarn.js';
 
 /**
  * Compiles the project from source files into a distributable
@@ -11,7 +10,6 @@ import yarn from './yarn.js';
  */
 export default async function build() {
   await run(clean);
-  await run(yarn);
   await run(lint);
   await run(tsc);
   await run(copy);

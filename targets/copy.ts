@@ -11,14 +11,8 @@ export default async function copy() {
   await copyDir('./build/src', './dist/src');
   const version = await getVersion();
   /* eslint-disable @typescript-eslint/no-unused-vars */
-  const {
-    buildStrap,
-    devDependencies,
-    devEngines,
-    packageManager,
-    scripts,
-    ...rest
-  } = getPkg();
+  const { buildStrap, devDependencies, devEngines, scripts, ...rest } =
+    getPkg();
   /* eslint-enable @typescript-eslint/no-unused-vars */
   await Promise.all([
     fs.writeFile(

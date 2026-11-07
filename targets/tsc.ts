@@ -8,7 +8,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default async function tsc() {
   // Use the current node binary, not the slow `node` shim from nub
-  await spawn(process.execPath, ['node_modules/.bin/tsc'], {
+  await spawn(process.execPath, ['node_modules/typescript/bin/tsc'], {
     cwd: path.resolve(__dirname, '..'),
     stdio: 'inherit',
   });
