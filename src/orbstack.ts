@@ -6,7 +6,7 @@ import { brew } from './brew.js';
 import { spawn, SpawnOptions, SpawnResult } from './cp.js';
 import {
   dockerIsRunning,
-  getDockerStatus,
+  getDockerInfo,
   throwIfDockerUnresponsive,
   waitForDockerToStart,
 } from './docker.js';
@@ -26,11 +26,11 @@ export const ensureOrbStackInstalled = async (
 };
 
 export const ensureOrbStackRunning = async (timeoutSeconds = 600) => {
-  const status = await getDockerStatus();
-  if (status === 'running') {
+  const info = await getDockerInfo();
+  if (info.status === 'running') {
     return;
   }
-  throwIfDockerUnresponsive(status);
+  throwIfDockerUnresponsive(info);
   if (!isMac()) {
     throw new Error('OrbStack is only supported on macOS');
   }

@@ -383,11 +383,24 @@ export async function copyFilesFromDockerImage({
 export type DockerStatus = 'running' | 'stopped' | 'unresponsive';
 
 // `docker info` writes one of these when the CLI cannot reach a daemon that is
-// not started. Any other failure means that the daemon answered with an error.
+// not started. The text differs between platforms and Docker versions. For
+// example, Docker 29 on macOS reports "failed to connect to the docker API".
 const dockerStoppedMarkers = [
   'cannot connect to the docker daemon',
   'is the docker daemon running',
-  'error during connect',
+  'failed to connect to the docker api',
+  'check if the path is correct and if the daemon is running',
+  'no such file or directory',
+  'the system cannot find the file specified',
+];
+
+// The daemon answered, but with an error. Older Docker versions exit 0 and
+// print the error, so the output must be checked before the exit code.
+const dockerUnresponsiveMarkers = [
+  'bad response from docker engine',
+  'error response from daemon',
+  'error reading remote info',
+  'errors pretty printing info',
 ];
 
 /**
@@ -406,31 +419,52 @@ export const classifyDockerInfo = (
   if (dockerStoppedMarkers.some((marker) => lower.includes(marker))) {
     return 'stopped';
   }
+  if (dockerUnresponsiveMarkers.some((marker) => lower.includes(marker))) {
+    return 'unresponsive';
+  }
   return exitCode === 0 ? 'running' : 'unresponsive';
 };
 
-export const getDockerStatus = async (): Promise<DockerStatus> => {
+export interface DockerInfo {
+  output: string;
+  status: DockerStatus;
+}
+
+export const getDockerInfo = async (): Promise<DockerInfo> => {
   try {
     const { code, output } = await spawn('docker', ['info'], {
       captureOutput: true,
       rejectOnErrorCode: false,
     });
-    return classifyDockerInfo(code, output);
-  } catch {
+    return { output, status: classifyDockerInfo(code, output) };
+  } catch (err) {
     // The docker binary is missing or could not start.
-    return 'stopped';
+    return { output: errorMessage(err), status: 'stopped' };
   }
 };
+
+export const getDockerStatus = async () => (await getDockerInfo()).status;
 
 export const dockerIsRunning = async () =>
   (await getDockerStatus()) === 'running';
 
-export const throwIfDockerUnresponsive = (status: DockerStatus) => {
-  if (status === 'unresponsive') {
-    throw new Error(
-      'Docker is running but unresponsive. Restart Docker and try again.',
-    );
+// Pick the most useful line from `docker info` for the error message.
+const dockerErrorDetail = (output: string): string | undefined =>
+  output
+    .split('\n')
+    .map((line) => line.trim())
+    .find((line) => /^(error|failed|permission denied)/i.test(line));
+
+export const throwIfDockerUnresponsive = ({ output, status }: DockerInfo) => {
+  if (status !== 'unresponsive') {
+    return;
   }
+  const detail = dockerErrorDetail(output);
+  throw new Error(
+    `Docker is running but unresponsive${
+      detail ? ` (${detail})` : ''
+    }. Restart Docker and try again.`,
+  );
 };
 
 /**
@@ -464,11 +498,11 @@ export const waitForDockerToStart = async (
 };
 
 export const ensureDockerRunning = async (timeoutSeconds = 600) => {
-  const status = await getDockerStatus();
-  if (status === 'running') {
+  const info = await getDockerInfo();
+  if (info.status === 'running') {
     return;
   }
-  throwIfDockerUnresponsive(status);
+  throwIfDockerUnresponsive(info);
   if (!isMac()) {
     throw new Error('Docker is not running, please start it manually');
   }

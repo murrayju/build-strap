@@ -19,18 +19,29 @@ const clientInfo = `Client:
   buildx: Docker Buildx (Docker Inc., v0.9.1)`;
 
 // Output from issue #25: Docker is started but the daemon is unresponsive.
+// Docker 29 returns the same error with exit code 1. Older versions returned
+// exit code 0, so the output must be checked first.
 const unresponsiveInfo = `${clientInfo}
 
 Server:
 ERROR: Error response from daemon: Bad response from Docker engine
 errors pretty printing info`;
 
-// Output from `docker info` when Docker is not started.
-const stoppedInfo = `${clientInfo}
+// Real output from Docker 29.8.2 on macOS when the daemon socket is missing.
+const stoppedInfo =
+  'failed to connect to the docker API at unix:///var/run/docker.sock; ' +
+  'check if the path is correct and if the daemon is running: ' +
+  'dial unix /var/run/docker.sock: connect: no such file or directory';
 
-Server:
-ERROR: Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?
-errors pretty printing info`;
+// The older message, still used for TCP connections and by older versions.
+const legacyStoppedInfo =
+  'Cannot connect to the Docker daemon at tcp://127.0.0.1:1. ' +
+  'Is the docker daemon running?';
+
+// Real output from Docker 29.8.2 when the user cannot access the socket.
+const permissionDeniedInfo =
+  'permission denied while trying to connect to the docker API at ' +
+  'unix:///var/run/docker.sock';
 
 void describe('classifyDockerInfo', () => {
   void it('reports running when docker info succeeds', () => {
@@ -41,8 +52,17 @@ void describe('classifyDockerInfo', () => {
     assert.equal(classifyDockerInfo(1, unresponsiveInfo), 'unresponsive');
   });
 
-  void it('reports stopped when the daemon cannot be reached', () => {
+  void it('reports unresponsive even when an older CLI exits 0', () => {
+    assert.equal(classifyDockerInfo(0, unresponsiveInfo), 'unresponsive');
+  });
+
+  void it('reports stopped when the daemon socket cannot be reached', () => {
     assert.equal(classifyDockerInfo(1, stoppedInfo), 'stopped');
+    assert.equal(classifyDockerInfo(1, legacyStoppedInfo), 'stopped');
+  });
+
+  void it('reports unresponsive when the socket is not accessible', () => {
+    assert.equal(classifyDockerInfo(1, permissionDeniedInfo), 'unresponsive');
   });
 });
 
@@ -150,5 +170,14 @@ esac
     // Docker Desktop can report a daemon error while it is still booting.
     // This must not abort the wait after the start command ran.
     await waitForDockerToStart(5, 'Docker');
+  });
+
+  void it('includes the real docker error in the fail-fast message', async () => {
+    await stubDockerInfo(1, permissionDeniedInfo);
+
+    await assert.rejects(
+      ensureDockerRunning(1),
+      /permission denied while trying to connect/,
+    );
   });
 });
