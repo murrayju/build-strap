@@ -7,6 +7,7 @@ export * from './copy.js';
 export * from './cp.js';
 export * from './docker.js';
 export * from './docker.container.js';
+export * from './docker.date.js';
 export * from './docker.network.js';
 export * from './docker.volume.js';
 export * from './dockerCleanup.js';

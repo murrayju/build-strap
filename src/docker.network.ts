@@ -1,5 +1,5 @@
 import { spawn } from './cp.js';
-import { parseDockerDate } from './docker.js';
+import { parseDockerDate } from './docker.date.js';
 
 export interface DockerNetwork {
   created: Date;

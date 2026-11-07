@@ -1,6 +1,6 @@
-import { CertConfig } from './cert.js';
-import { DockerConfig } from './docker.js';
-import { NpmConfig } from './npm.js';
+import type { CertConfig } from './cert.js';
+import type { DockerConfig } from './docker.js';
+import type { NpmConfig } from './npm.js';
 
 export interface BuildStrapConfig {
   cert?: CertConfig;

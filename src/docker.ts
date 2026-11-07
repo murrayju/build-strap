@@ -1,7 +1,6 @@
 import bytes from 'bytes';
 import fs from 'fs-extra';
 import isReachable from 'is-reachable';
-import moment from 'moment';
 import os from 'os';
 import path from 'path';
 
@@ -10,6 +9,7 @@ import {
   dockerContainerKill,
   dockerContainerRunDaemon,
 } from './docker.container.js';
+import { parseDockerDate } from './docker.date.js';
 import { dockerNetworkConnect } from './docker.network.js';
 import { cmdExists, isArm, isMac } from './env.js';
 import { downloadFile } from './fetch.js';
@@ -27,9 +27,6 @@ export interface DockerConfig {
 export function getDockerConfig(): DockerConfig {
   return getCfg().docker || {};
 }
-
-export const parseDockerDate = (date: string): Date =>
-  moment(date, 'YYYY-MM-DD HH:mm:ss ZZ').toDate();
 
 export async function dockerBuild(
   tags: string[] = ['latest'],

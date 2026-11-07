@@ -1,7 +1,7 @@
 import bytes from 'bytes';
 
 import { spawn, SpawnOptions } from './cp.js';
-import { parseDockerDate } from './docker.js';
+import { parseDockerDate } from './docker.date.js';
 import { buildLog, errorMessage } from './run.js';
 
 interface DockerContainerInspectOutput {
