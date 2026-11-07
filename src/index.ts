@@ -25,6 +25,7 @@ export * from './pkg.js';
 export * from './promise.js';
 export * from './prompt.js';
 export * from './publish.js';
+export * from './release.js';
 export * from './run.js';
 export * from './ssh.js';
 export * from './tgz.js';

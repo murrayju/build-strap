@@ -58,6 +58,16 @@ export async function gitTagsAtCommit(commitish = 'HEAD'): Promise<string[]> {
 }
 
 /**
+ * All tags that are reachable from the given commit (HEAD by default).
+ */
+export async function gitTagsMergedInto(commitish = 'HEAD'): Promise<string[]> {
+  const output = await gitOutput(['tag', '--merged', commitish], {
+    rejectOnErrorCode: false,
+  });
+  return output.split('\n').filter(Boolean);
+}
+
+/**
  * True when `ancestorCommitish` is reachable from `descendantCommitish`.
  * Useful for verifying that a release tag lives on the main branch.
  */

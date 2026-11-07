@@ -1,6 +1,12 @@
 import fs from 'fs';
+import semver from 'semver';
 
-import { gitInfo, gitIsAncestor, gitTagsAtCommit } from './git.js';
+import {
+  gitInfo,
+  gitIsAncestor,
+  gitTagsAtCommit,
+  gitTagsMergedInto,
+} from './git.js';
 import { getCfg, getPkg } from './pkg.js';
 import { buildLog } from './run.js';
 
@@ -85,15 +91,36 @@ export function parseSemverTag(tag: string): null | SemverTag {
   if (!major || !minor || !patch) {
     return null;
   }
+  const version = `${major}.${minor}.${patch}${prerelease ? `-${prerelease}` : ''}`;
+  // The regex accepts some versions that semver rejects (for example `1.2.3-01`)
+  if (!semver.valid(version)) {
+    return null;
+  }
   return {
     major,
     minor,
     patch,
     prerelease: prerelease || null,
     tag,
-    version: `${major}.${minor}.${patch}${prerelease ? `-${prerelease}` : ''}`,
+    version,
   };
 }
+
+/**
+ * The highest of the tags by semver order, or null when the list is empty.
+ */
+export function highestSemverTag(tags: SemverTag[]): null | SemverTag {
+  return (
+    tags.toSorted((a, b) => semver.compare(a.version, b.version)).at(-1) ?? null
+  );
+}
+
+/**
+ * When package.json has this version, the version is not kept in package.json.
+ * The git tags then supply the version: a release build takes the version from
+ * its tag, and other builds are pre-releases of the next patch version.
+ */
+export const placeholderPackageVersion = '0.0.0';
 
 /**
  * The semver tag pointing at the commit being built, if any. This is what makes
@@ -124,27 +151,49 @@ export async function getReleaseTag(): Promise<null | SemverTag> {
   if ((await getRepoType()) !== RepoType.git) {
     return null;
   }
-  const semverTags = (await gitTagsAtCommit())
-    .map(parseSemverTag)
-    .filter((t): t is SemverTag => t != null);
-  return (
-    semverTags.sort((a, b) =>
-      a.version.localeCompare(b.version, undefined, { numeric: true }),
-    )[semverTags.length - 1] || null
+  return highestSemverTag(
+    (await gitTagsAtCommit())
+      .map(parseSemverTag)
+      .filter((t): t is SemverTag => t != null),
   );
+}
+
+/**
+ * The version that a build without a release tag is a pre-release of. This is
+ * the version in package.json. When package.json has the placeholder version,
+ * this is the next patch version after the highest release tag in the history
+ * of HEAD.
+ */
+export async function getBaseVersion(): Promise<null | SemverTag> {
+  const { version: pkgVersion } = getPkg();
+  if (pkgVersion !== placeholderPackageVersion) {
+    return parseSemverTag(pkgVersion.split('-')[0]);
+  }
+  const latestReleaseTag = highestSemverTag(
+    (await gitTagsMergedInto())
+      .map(parseSemverTag)
+      .filter((t): t is SemverTag => t != null),
+  );
+  const nextPatchVersion = semver.inc(
+    latestReleaseTag?.version ?? placeholderPackageVersion,
+    'patch',
+  );
+  return nextPatchVersion ? parseSemverTag(nextPatchVersion) : null;
 }
 
 /**
  * Verify that the semver release tag agrees with the version in package.json, so
  * that the published artifact always matches its source. Pre-release identifiers
  * on the tag (e.g. `v1.2.3-rc.1` for package version `1.2.3`) are allowed.
+ * When package.json has the placeholder version, the tag is the only source of
+ * the version, so there is nothing to compare.
  */
 export async function assertReleaseTagMatchesPackageVersion(): Promise<void> {
   const releaseTag = await getReleaseTag();
-  if (!releaseTag) {
+  const { version: pkgVersion } = getPkg();
+  if (!releaseTag || pkgVersion === placeholderPackageVersion) {
     return;
   }
-  const { version: pkgVersion } = getPkg();
   const pkgSemver = parseSemverTag(pkgVersion);
   const tagBaseVersion = `${releaseTag.major}.${releaseTag.minor}.${releaseTag.patch}`;
   const pkgBaseVersion =
@@ -231,19 +280,18 @@ export async function getVersion(
     const releaseTag = await getReleaseTag();
     const isRelease = await getIsRelease(release);
     // A release build takes its version from the git tag that triggered it;
-    // everything else is a pre-release of the version in package.json.
-    const semver =
-      (isRelease && releaseTag) || parseSemverTag(pkgVersion.split('-')[0]);
-    if (!semver) {
+    // everything else is a pre-release of the base version.
+    const versionSource = (isRelease && releaseTag) || (await getBaseVersion());
+    if (!versionSource) {
       throw new Error(
         `Invalid version format in package.json: \`${pkgVersion}\``,
       );
     }
-    const { major, minor, patch, prerelease } = semver;
+    const { major, minor, patch, prerelease } = versionSource;
     const build = getBuild();
     const short = `${major}.${minor}.${patch}`;
     const npm = isRelease
-      ? semver.version
+      ? versionSource.version
       : `${short}-${getBuildSourceLabel(repoInfo)}.${build}`;
     const info = `${npm}+${build}.${revision}`;
     version = {

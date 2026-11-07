@@ -46,7 +46,7 @@ By default, the build tools read project-specific configuration from your `packa
 ```
 {
   "name": "your-project-name",
-  "version": "1.2.3",
+  "version": "0.0.0",
   "buildStrap": {
     "repoType": "git",
     "copyright": "your company",
@@ -74,11 +74,13 @@ The name of the single long-lived branch of the repository (defaults to `main`).
 ## Branching and Release Workflow
 This project (and projects built with it) use a single long-lived branch (`main`) with short-lived work branches merged into it via pull request. There is no separate development or release branch.
 
-Releases are triggered by pushing a [semver](https://semver.org/) tag (with an optional leading `v`) to a commit on `main`:
+Releases are triggered by pushing a [semver](https://semver.org/) tag (with an optional leading `v`) to a commit on `main`. The CI build of the tag publishes the release. To cut a release, run:
 
 ```
-git tag v1.2.3 && git push origin v1.2.3
+./bs release <major | minor | patch | prerelease | X.Y.Z> [--preid=<id>] [--dry-run]
 ```
+
+This computes the next version from the highest release tag on `origin`, checks that you are on an up-to-date and clean `main`, asks for confirmation, then creates and pushes the tag `vX.Y.Z`. `prerelease` gives the next pre-release with the identifier `rc` (or `--preid=<id>`), for example `1.2.4-rc.0` after `1.2.3`. No commit is necessary. To give your project the same command, call the `release` function from a build target (see [targets/release.ts](targets/release.ts)).
 
 The version being built is determined as follows:
 
@@ -86,10 +88,13 @@ The version being built is determined as follows:
 | --- | --- | --- | --- |
 | Tag `v1.2.3` on `main` | `1.2.3` | `latest` | `latest`, `1`, `1.2`, `1.2.3` |
 | Tag `v1.2.3-rc.1` on `main` | `1.2.3-rc.1` | `rc` | `1.2.3-rc.1`, `latest-rc` |
-| Untagged commit on `main` | `1.2.3-main.42` | `next` | `latest-main` |
-| Work branch / pull request | `1.2.3-my-branch.42` | `branch` | (none) |
+| Untagged commit on `main` | `1.2.4-main.42` | `next` | `latest-main` |
+| Work branch / pull request | `1.2.4-my-branch.42` | `branch` | (none) |
 
-For untagged builds, the base version comes from the `version` field in `package.json` and the build number comes from `--buildNum=` (or the `BUILD_NUMBER` environment variable). For release builds, the version comes from the git tag, and the build refuses to publish if the tagged commit is not contained in `main`.
+For release builds, the version comes from the git tag, and the build refuses to publish if the tagged commit is not contained in `main`. Untagged builds are pre-releases of a base version, and the build number comes from `--buildNum=` (or the `BUILD_NUMBER` environment variable). The base version depends on the `version` field in `package.json`:
+
+- `0.0.0` (recommended, and used by this project): `package.json` does not keep the version. The base version is the next patch version after the highest release tag in the history of the commit. For example, after `v1.2.3`, untagged builds of `main` are `1.2.4-main.42`.
+- Any other version: the base version is the version in `package.json`, and a release tag must have the same `major.minor.patch` as `package.json`.
 
 On GitHub Actions, only the build for the tag push is a release build. The branch build of the same commit stays an untagged build, also when it already sees the tag. Elsewhere, a build is a release build when a semver tag points at the commit being built.
 
