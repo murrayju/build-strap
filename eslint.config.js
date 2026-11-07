@@ -64,27 +64,11 @@ export default defineConfig(
       '@typescript-eslint/array-type': 'error',
       // this codebase intentionally infers return types
       '@typescript-eslint/explicit-function-return-type': 'off',
-      // --- type-aware rules kept as warnings ---
-      // These flag pre-existing patterns throughout the codebase rather than
-      // new breakage, and mechanically "fixing" them risks behavior changes.
-      // They are surfaced as warnings so the build stays green while the debt
-      // is visible and can be paid down incrementally. The correctness-critical
-      // type-aware rules (no-floating-promises, no-misused-promises,
-      // await-thenable, return-await, no-base-to-string, ...) remain errors.
-      '@typescript-eslint/no-confusing-void-expression': 'warn',
-      '@typescript-eslint/no-empty-function': 'warn',
       // `strict` bans non-null assertions, but several caching helpers rely on
       // a `has()` check immediately before `get()!`
       '@typescript-eslint/no-non-null-assertion': 'off',
       '@typescript-eslint/no-redeclare': 'error',
       '@typescript-eslint/no-shadow': 'error',
-      '@typescript-eslint/no-unnecessary-condition': 'warn',
-      '@typescript-eslint/no-unsafe-argument': 'warn',
-
-      '@typescript-eslint/no-unsafe-assignment': 'warn',
-      '@typescript-eslint/no-unsafe-call': 'warn',
-      '@typescript-eslint/no-unsafe-member-access': 'warn',
-      '@typescript-eslint/no-unsafe-return': 'warn',
       '@typescript-eslint/no-unused-vars': 'error',
       // Off, not just downgraded: `||` is deliberate throughout this codebase
       // because it also falls back on the empty string, which `??` does not.
@@ -93,10 +77,6 @@ export default defineConfig(
       // autofix would silently change that behavior, so the rule is not a
       // useful signal here.
       '@typescript-eslint/prefer-nullish-coalescing': 'off',
-      '@typescript-eslint/prefer-optional-chain': 'warn',
-      '@typescript-eslint/prefer-reduce-type-parameter': 'warn',
-      '@typescript-eslint/prefer-regexp-exec': 'warn',
-      '@typescript-eslint/restrict-plus-operands': 'warn',
       // interpolating numbers is idiomatic in this codebase's log messages;
       // the remaining nullable/boolean cases are still reported
       '@typescript-eslint/restrict-template-expressions': [
