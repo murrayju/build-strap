@@ -88,7 +88,11 @@ export async function spawn(
 
       p.on('close', handleExit);
 
-      p.on('exit', handleExit);
+      // 'exit' can occur before the stdio streams are fully read. When we
+      // capture output, wait for 'close' so that no output is lost.
+      if (!captureOutput) {
+        p.on('exit', handleExit);
+      }
 
       // only fires if we failed to spawn
       p.on('error', (err: Error & { code?: string; errno?: string }) => {
