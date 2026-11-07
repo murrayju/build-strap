@@ -46,7 +46,7 @@ export async function spawn(
           if (pipeOutput) {
             p.stdout.pipe(process.stdout);
           }
-          p.stdout.on('data', (d) => {
+          p.stdout.on('data', (d: Buffer | string) => {
             const str = d.toString();
             stdout += str;
             output += str;
@@ -58,7 +58,7 @@ export async function spawn(
           if (pipeOutput) {
             p.stderr.pipe(process.stderr);
           }
-          p.stderr.on('data', (d) => {
+          p.stderr.on('data', (d: Buffer | string) => {
             const str = d.toString();
             stderr += str;
             output += str;

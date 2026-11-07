@@ -1,11 +1,20 @@
 import { createRequire } from 'module';
 
-import { run, runCli, setPkg } from '../src/index.js';
+import {
+  type PackageJson,
+  run,
+  runCli,
+  type RunnableModule,
+  setPkg,
+} from '../src/index.js';
 
 const require = createRequire(import.meta.url);
 
-setPkg(require('../package.json'));
+setPkg(require('../package.json') as PackageJson);
 
-void runCli({ resolveFn: async (path: string) => import(`./${path}.ts`) });
+void runCli({
+  resolveFn: async (path: string) =>
+    import(`./${path}.ts`) as Promise<RunnableModule<string[], unknown>>,
+});
 
 export default run;

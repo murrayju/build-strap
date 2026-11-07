@@ -69,5 +69,4 @@ export const filterKeys = <V, K extends string = string>(
 export const filterNullish = <T>(
   obj: Record<string, T>,
 ): Record<string, Exclude<T, null | undefined>> =>
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  filterKeys(obj) as any;
+  filterKeys(obj) as Record<string, Exclude<T, null | undefined>>;

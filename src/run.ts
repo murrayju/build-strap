@@ -18,6 +18,9 @@ export function errorMessage(err: unknown): string {
     return err;
   }
   try {
+    // JSON.stringify returns undefined for undefined, functions and symbols,
+    // but the TypeScript lib types declare the return type as string only
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     return JSON.stringify(err) ?? String(err);
   } catch {
     return String(err);
@@ -90,6 +93,8 @@ export async function run<Args extends string[], Result>(
   fn: RunnableModule<Args, Result>,
   ...options: Args
 ): Promise<Result> {
+  // JavaScript callers can pass null or undefined
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   if (fn == null) {
     throw new Error(`Invalid argument passed to run(${String(fn)})`);
   }
@@ -121,7 +126,8 @@ export async function runCli<Args extends string[], Result>({
   argv = process.argv,
   defaultAction = 'build',
   passthroughArgv = false,
-  resolveFn = async (path: string) => import(`./${path}.js`),
+  resolveFn = async (path: string) =>
+    import(`./${path}.js`) as Promise<RunnableModule<Args, Result>>,
 }: RunCliOptions<Args, Result> = {}): Promise<Result> {
   const module =
     argv.length > 2

@@ -25,8 +25,9 @@ async function flatten(
   const result = await input;
   return Array.isArray(result)
     ? ([] as string[]).concat(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        ...(await Promise.all<string[][]>(result.map(flatten as any))),
+        ...(await Promise.all(
+          result.map(flatten as (value: unknown) => Promise<string[]>),
+        )),
       )
     : result;
 }

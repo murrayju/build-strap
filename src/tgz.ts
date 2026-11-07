@@ -23,10 +23,10 @@ const generateHash = async (
     stream
       .pipe(crypto.createHash(type).setEncoding('hex'))
       .on('finish', function onFinish(this: Readable) {
-        resolve(this.read());
+        resolve(this.read() as string);
       })
       .on('end', function onEnd(this: Readable) {
-        resolve(this.read());
+        resolve(this.read() as string);
       })
       .on('error', (err) => {
         reject(err);

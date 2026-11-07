@@ -71,10 +71,11 @@ interface DockerComposeNetworkDef extends DockerNetworkCreateOptions {
 }
 
 interface DockerCompose {
-  networks?: Record<string, DockerComposeNetworkDef>;
+  // a bare key in YAML (for example `my-network:`) parses to null
+  networks?: Record<string, null | DockerComposeNetworkDef>;
   services?: Record<string, DockerComposeServiceDef>;
   version: string;
-  volumes?: Record<string, DockerComposeVolumeDef>;
+  volumes?: Record<string, null | DockerComposeVolumeDef>;
 }
 
 /**
@@ -213,7 +214,7 @@ const parseNetworks = async (
   dockerCompose: null | (string | DockerCompose) = null,
 ): Promise<ParsedNetworkInfo> => {
   const { networks: netMap } = await dockerComposeResolve(dockerCompose);
-  const networks = netCfg.map((n) => netMap?.[n].name || prefixName(n));
+  const networks = netCfg.map((n) => netMap?.[n]?.name || prefixName(n));
   return {
     networks,
     runArgs: networks.flatMap((n) => ['--network', n]),
@@ -230,7 +231,7 @@ export const dockerComposeCreateNetworks = async (
     Object.entries(networks).map(async ([key, val]) => {
       const name = val?.name || prefixName(key);
       if (names?.includes(name)) {
-        const network = await dockerNetworkCreate(name, val);
+        const network = await dockerNetworkCreate(name, val ?? undefined);
         if (network) {
           tracker.networks.set(name, network);
         }
@@ -249,7 +250,7 @@ export const dockerComposeCreateVolumes = async (
     Object.entries(volumes).map(async ([key, val]) => {
       const name = val?.name || prefixName(key);
       if (!names || names.includes(name)) {
-        const volume = await dockerVolumeCreate(name, val);
+        const volume = await dockerVolumeCreate(name, val ?? undefined);
         if (volume) {
           tracker.volumes.set(name, volume);
         }
@@ -751,10 +752,9 @@ export async function dockerComposeRunService(
     urls: [{ docker: dockerUrl, local: url }],
   } = upResult;
   const { id, image, name } = container;
-  urls.forEach(
-    ({ local }) =>
-      local && buildLog(`<${service.name}> accessible at ${local}`),
-  );
+  urls.forEach(({ local }) => {
+    if (local) buildLog(`<${service.name}> accessible at ${local}`);
+  });
   return {
     ...upResult,
     dockerPort,

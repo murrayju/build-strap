@@ -26,7 +26,9 @@ export function getNpmConfig(): NpmConfig {
 }
 
 export const envNpmCreds: null | NpmCreds =
-  (process.env.NPM_CREDS && JSON.parse(process.env.NPM_CREDS)) || null;
+  (process.env.NPM_CREDS &&
+    (JSON.parse(process.env.NPM_CREDS) as null | NpmCreds)) ||
+  null;
 
 const npmExe = (npmPath?: string) =>
   npmPath || (platform() === 'win32' ? 'npm.cmd' : 'npm');
@@ -81,7 +83,7 @@ export async function npmGetVersions(
           },
         })
       ).stdout.trim(),
-    );
+    ) as string[];
   } catch (err) {
     if (err instanceof Error) {
       buildLog(

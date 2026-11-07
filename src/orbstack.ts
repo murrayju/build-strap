@@ -69,8 +69,11 @@ export const ensureOrbStackConfigured = async (
     await fs.writeJson(configPath, desiredConfig, { spaces: 2 });
     changed = true;
   } else {
-    const existingConfig = await fs.readJson(configPath);
-    const effectiveConfig = {
+    const existingConfig = (await fs.readJson(configPath)) as Record<
+      string,
+      unknown
+    >;
+    const effectiveConfig: Record<string, unknown> = {
       ...defaultConfig,
       ...existingConfig,
     };

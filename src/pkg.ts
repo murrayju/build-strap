@@ -20,7 +20,7 @@ export interface Person {
 export interface PackageJson {
   author?: string | Person;
   // our addition
-  buildStrap: BuildStrapConfig;
+  buildStrap?: BuildStrapConfig;
   contributors?: (string | Person)[];
   dependencies?: Record<string, string>;
   description?: string;
@@ -63,7 +63,7 @@ const pkgNameRegex = /^(?:(@[^/]+)\/)?(.+)$/i;
 
 export function getPkgName(includeScope = false): string {
   const pkg = getPkg();
-  if (!(pkg.name && pkg.name.length)) {
+  if (!pkg.name) {
     throw new Error(
       'Package name not found in package.json, but this is a required property!',
     );
@@ -90,6 +90,7 @@ export function getPkgSafeName(): null | string {
     return null;
   }
   const [, scope, name] = match;
-  const safeScope = scope?.slice(1);
+  // the scope group is optional, so it can be undefined at runtime
+  const safeScope = (scope as string | undefined)?.slice(1);
   return safeScope ? `${safeScope}-${name}` : name;
 }

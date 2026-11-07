@@ -35,7 +35,7 @@ export async function dockerBuild(
   tags: string[] = ['latest'],
   buildArgs: string[] = [],
   target: string | null = null,
-  extraArgs: string[] = [],
+  extraArgs: null | string[] = [],
   repo: string = getDockerRepo(),
   dockerFile = './Dockerfile',
   workDir = '.',
@@ -107,6 +107,16 @@ export interface DockerImage {
 
 export type DockerImageFilter = (i: DockerImage) => boolean;
 
+// One line of `docker images --format '{{json .}}'` output
+interface DockerImageJson {
+  CreatedAt: string;
+  Digest: string;
+  ID?: string;
+  Repository: string;
+  Size: string;
+  Tag: string;
+}
+
 export async function dockerImages(
   repo: null | string = getDockerRepo(),
   filter: null | DockerImageFilter = null,
@@ -128,7 +138,7 @@ export async function dockerImages(
         Repository: repository,
         Size,
         Tag: tag,
-      } = JSON.parse(l.trim());
+      } = JSON.parse(l.trim()) as DockerImageJson;
       return {
         created: parseDockerDate(CreatedAt),
         digest,
@@ -138,9 +148,8 @@ export async function dockerImages(
         tag,
       };
     })
-    .filter(
-      (m) => m?.id != null && (typeof filter === 'function' ? filter(m) : true),
-    );
+    .filter((m): m is DockerImage => m.id != null)
+    .filter((m) => (typeof filter === 'function' ? filter(m) : true));
 }
 
 export async function getDockerId(
@@ -475,7 +484,10 @@ export const ensureDockerForMacConfigured = async (
     if (!(await fs.pathExists(configPath))) {
       throw new Error('Failed to locate the Docker config file');
     }
-    const existingConfig = await fs.readJson(configPath);
+    const existingConfig = (await fs.readJson(configPath)) as Record<
+      string,
+      unknown
+    >;
     if (
       !Object.entries(desiredConfig).every(
         ([key, value]) => existingConfig[key] === value,

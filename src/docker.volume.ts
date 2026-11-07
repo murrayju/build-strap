@@ -127,7 +127,7 @@ export async function unthrottledDockerVolumeInspect(
 ): Promise<DockerVolumeInspectOutput[]> {
   const ids = Array.isArray(id) ? id : [id];
   return (
-    JSON.parse(
+    (JSON.parse(
       (
         await spawn(
           'docker',
@@ -135,7 +135,7 @@ export async function unthrottledDockerVolumeInspect(
           { captureOutput: true },
         )
       ).output.trim(),
-    ) || []
+    ) as null | DockerVolumeInspectOutput[]) || []
   );
 }
 

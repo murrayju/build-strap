@@ -347,7 +347,11 @@ export default defineConfig(
       // In flat config `prettier/recommended` no longer pulls in
       // eslint-config-prettier via `extends`, so it is spread explicitly.
       ...prettierConfig.rules,
-      ...prettierPlugin.configs.recommended.rules,
+      // The plugin types `configs` as a union that includes an array, so
+      // `.rules` resolves to `any`. This cast selects the eslintrc shape.
+      .../** @type {import('eslint').Linter.LegacyConfig} */ (
+        prettierPlugin.configs.recommended
+      ).rules,
       'prettier/prettier': 'error',
     },
     settings: {

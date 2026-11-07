@@ -119,7 +119,7 @@ export async function unthrottledDockerContainerLs({
         inspect: async () => (await dockerContainerInspect(id))?.[0],
         async isRunning(): Promise<boolean> {
           try {
-            return (await this.inspect())?.State?.Running || false;
+            return (await this.inspect())?.State.Running || false;
           } catch {
             return false;
           }
@@ -149,7 +149,9 @@ export async function unthrottledDockerContainerLs({
         stop: async (ignoreError = true) =>
           dockerContainerStop(id, ignoreError),
         async teardown(verbose = true) {
-          const log = (msg: string) => verbose && buildLog(msg);
+          const log = (msg: string) => {
+            if (verbose) buildLog(msg);
+          };
           if (await this.isRunning()) {
             try {
               log(`Stopping container: <${this.name}>...`);
@@ -288,17 +290,15 @@ export async function unthrottledDockerContainerInspect(
 ): Promise<DockerContainerInspectOutput[]> {
   const ids = Array.isArray(id) ? id : [id];
   return (
-    (
-      await spawn(
-        'docker',
-        ['container', 'inspect', '--format', '{{json .}}', ...ids],
-        { captureOutput: true },
-      )
-    ).output
-      .split('\n')
-      .filter((line) => !!line.trim())
-      .map((line) => JSON.parse(line.trim())) || []
-  );
+    await spawn(
+      'docker',
+      ['container', 'inspect', '--format', '{{json .}}', ...ids],
+      { captureOutput: true },
+    )
+  ).output
+    .split('\n')
+    .filter((line) => !!line.trim())
+    .map((line) => JSON.parse(line.trim()) as DockerContainerInspectOutput);
 }
 export const dockerContainerInspect: (
   id: string | string[],
