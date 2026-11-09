@@ -91,7 +91,8 @@ function watchDestination(
     const newStreams = new Set<NodeJS.ReadableStream>();
     prefixedStreamsByDestination.set(destination, newStreams);
     destination.on('unpipe', (unpipedStream: NodeJS.ReadableStream) => {
-      // Ignore the streams of other commands, and ignore normal ends.
+      // Ignore the streams of other commands. A stream that already ended is
+      // still in the set, and `resume()` does nothing for such a stream.
       if (newStreams.has(unpipedStream)) {
         unpipedStream.resume();
       }
