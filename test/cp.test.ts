@@ -141,6 +141,60 @@ void describe('spawn outputPrefix', () => {
     assert.equal(stdout, 'job: 10%\rjob: 50%\r\n');
   });
 
+  void it('keeps a line break that is split across chunks whole', async () => {
+    const { stdout } = await runPipeScript(
+      { outputPrefix: 'job: ', pipeOutput: true },
+      `
+        process.stdout.write('a\\r');
+        setTimeout(() => process.stdout.write('\\nb\\n'), 10);
+      `,
+    );
+
+    assert.equal(stdout, 'job: a\r\njob: b\n');
+  });
+
+  void it('settles when the command does not exist', async () => {
+    const source = `
+      import { spawn } from ${JSON.stringify(spawnModuleUrl)};
+      await spawn('build-strap-no-such-command', [], {
+        outputPrefix: 'job: ',
+        pipeOutput: true,
+      }).then(
+        () => process.stdout.write('resolved'),
+        (error) => process.stdout.write('rejected: ' + error.code),
+      );
+    `;
+    const { stdout } = await execFileAsync(process.execPath, [
+      '--input-type=module',
+      '-e',
+      source,
+    ]);
+
+    assert.equal(stdout, 'rejected: ENOENT');
+  });
+
+  void it('settles when the command is killed', async () => {
+    const source = `
+      import { spawn } from ${JSON.stringify(spawnModuleUrl)};
+      const result = await spawn(
+        process.execPath,
+        ['-e', ${JSON.stringify(`
+          process.stdout.write('started\\n');
+          process.kill(process.pid, 'SIGKILL');
+        `)}],
+        { outputPrefix: 'job: ', pipeOutput: true, rejectOnErrorCode: false },
+      );
+      process.stdout.write('signal: ' + result.signal);
+    `;
+    const { stdout } = await execFileAsync(process.execPath, [
+      '--input-type=module',
+      '-e',
+      source,
+    ]);
+
+    assert.equal(stdout, 'job: started\nsignal: SIGKILL');
+  });
+
   void it('writes the last line before the caller continues', async () => {
     const source = `
       import { spawn } from ${JSON.stringify(spawnModuleUrl)};

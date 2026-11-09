@@ -11,6 +11,12 @@ export interface SpawnOptions extends cp.SpawnOptions {
   /**
    * Text to add to the start of each line that is piped to the current
    * process, for example `'foo: '`. Captured output has no prefix.
+   *
+   * The child writes to a pipe, not to a terminal, so commands that change
+   * their output when it is not a terminal (colors, progress) do so here too.
+   *
+   * The spawn promise waits for the piped output, so a command that leaves a
+   * background process with the output pipe open also delays the promise.
    */
   outputPrefix?: string;
   pipeOutput?: boolean;
@@ -25,7 +31,8 @@ export interface SpawnOptions extends cp.SpawnOptions {
  * stream writes any remaining partial line.
  *
  * A carriage return also ends a line, so that progress output that redraws a
- * line stays readable.
+ * line stays readable. A trailing carriage return is held back, so that a
+ * following line feed stays attached to it.
  */
 function createLinePrefixStream(prefix: string): Transform {
   const decoder = new StringDecoder('utf8');
@@ -41,9 +48,16 @@ function createLinePrefixStream(prefix: string): Transform {
     transform(chunk: Buffer, _encoding, callback) {
       // Decode with StringDecoder, so that a character that is split across
       // two chunks is not broken.
-      const parts = (partialLine + decoder.write(chunk)).split(/(\r\n|\r|\n)/);
+      let text = partialLine + decoder.write(chunk);
+      // A chunk can end between `\r` and `\n`. Keep the `\r`, so that the two
+      // characters are read as one line break in the next chunk.
+      const heldCarriageReturn = text.endsWith('\r') ? '\r' : '';
+      if (heldCarriageReturn) {
+        text = text.slice(0, -1);
+      }
+      const parts = text.split(/(\r\n|\r|\n)/);
       // The last part has no line break, so the line is not complete yet.
-      partialLine = parts.pop() ?? '';
+      partialLine = (parts.pop() ?? '') + heldCarriageReturn;
       for (let index = 0; index < parts.length; index += 2) {
         this.push(`${prefix}${parts[index]}${parts[index + 1]}`);
       }
@@ -66,18 +80,31 @@ function forwardOutput(
   if (!source) {
     return Promise.resolve();
   }
-  const reader = prefix
-    ? (source.pipe(createLinePrefixStream(prefix)) as NodeJS.ReadableStream)
-    : source;
-  reader.pipe(destination);
-  // Resolve on either event, because a killed child can close the stream
-  // without ending it.
+  if (!prefix) {
+    source.pipe(destination);
+    // A killed child can close the stream without ending it.
+    return new Promise((resolve) => {
+      const done = () => {
+        resolve();
+      };
+      source.once('end', done);
+      source.once('close', done);
+    });
+  }
+  const prefixStream = createLinePrefixStream(prefix);
+  source.pipe(prefixStream);
+  prefixStream.pipe(destination);
+  // `pipe` ends the transform only when the source ends. A destroyed source
+  // can close instead, so end the transform here to write the last line.
+  source.once('close', () => {
+    if (!prefixStream.writableEnded) {
+      prefixStream.end();
+    }
+  });
   return new Promise((resolve) => {
-    const done = () => {
+    prefixStream.once('close', () => {
       resolve();
-    };
-    reader.once('end', done);
-    reader.once('close', done);
+    });
   });
 }
 
