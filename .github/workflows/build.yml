@@ -6,9 +6,9 @@ on:
     tags: ["v[0-9]+.[0-9]+.[0-9]+", "v[0-9]+.[0-9]+.[0-9]+-*"]
   pull_request:
     branches: ["**"]
-    # A new label re-runs the checks, so a pull request can be published by
-    # adding the publish-npm label, with no new commit.
-    types: [opened, synchronize, reopened, labeled]
+    # A label change re-runs the checks: adding the publish-npm label publishes
+    # with no new commit, and removing it replaces the run that would publish.
+    types: [opened, synchronize, reopened, labeled, unlabeled]
 # Read-only by default. A job that needs more asks for it in the job.
 permissions:
   contents: read
@@ -40,12 +40,28 @@ jobs:
       id-token: write
       # Required to create the GitHub release for a semver tag
       contents: write
-    env:
-      # Publish from a semver tag, a push to the default branch, or a pull
-      # request with the publish-npm label. Every other build (a work branch,
-      # or a pull request from a work branch) only packs the tarball.
-      PUBLISH_NPM: ${{ startsWith(github.ref, 'refs/tags/') || github.ref == format('refs/heads/{0}', github.event.repository.default_branch) || (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'publish-npm')) }}
     steps:
+      - name: Publish gate
+        id: gate
+        # Publish from a semver tag, a push to the default branch, or a pull
+        # request in this repository with the publish-npm label. Every other
+        # build packs the tarball only, including a pull request from a fork,
+        # because a fork run cannot get the npm credentials.
+        #
+        # The ref check runs in the shell, because the GitHub expression `==`
+        # ignores case and would also match a work branch named `MAIN`.
+        env:
+          IS_TAG: ${{ startsWith(github.ref, 'refs/tags/') }}
+          HAS_PUBLISH_LABEL: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'publish-npm') }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          publish=false
+          if [ "$IS_TAG" = "true" ] || [ "$HAS_PUBLISH_LABEL" = "true" ] ||
+             { [ "$GITHUB_EVENT_NAME" = "push" ] && [ "$GITHUB_REF" = "refs/heads/$DEFAULT_BRANCH" ]; }; then
+            publish=true
+          fi
+          echo "publish=$publish" >> "$GITHUB_OUTPUT"
+          echo "Publish to npm: $publish"
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -53,12 +69,12 @@ jobs:
           # verify the tagged commit is contained in main
           fetch-depth: 0
       - name: Build and Package
-        if: ${{ env.PUBLISH_NPM != 'true' }}
+        if: ${{ steps.gate.outputs.publish != 'true' }}
         run: ./bs package --buildNum=$GITHUB_RUN_NUMBER
       - name: Build and NPM Publish
         # For a semver tag, publishes the release version (npm dist-tag `latest`).
         # Otherwise publishes a pre-release (`next` for main, `branch` elsewhere).
-        if: ${{ env.PUBLISH_NPM == 'true' }}
+        if: ${{ steps.gate.outputs.publish == 'true' }}
         run: ./bs publish --buildNum=$GITHUB_RUN_NUMBER
       - name: Capture version
         if: ${{ startsWith(github.ref, 'refs/tags/') }}
