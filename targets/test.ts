@@ -19,8 +19,13 @@ export default async function test() {
     buildLog('Skipping due to --no-test');
     return;
   }
-  await spawn(process.execPath, ['--test', 'build/test'], {
-    cwd: rootDir,
-    stdio: 'inherit',
-  });
+  await spawn(
+    process.execPath,
+    // A spawn that never settles must fail its test, not block the whole run.
+    ['--test', '--test-timeout=20000', 'build/test'],
+    {
+      cwd: rootDir,
+      stdio: 'inherit',
+    },
+  );
 }
