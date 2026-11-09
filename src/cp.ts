@@ -104,15 +104,19 @@ function forwardOutput(
   };
   // A failed destination makes `pipe` unpipe the transform. The transform then
   // holds its buffer and never closes, so read it to let the child finish.
-  const drainPrefixStream = () => {
-    prefixStream.resume();
+  // The destination also unpipes streams of other spawns, so keep the listener
+  // (not `once`) and check which stream unpiped.
+  const drainPrefixStream = (unpipedSource: NodeJS.ReadableStream) => {
+    if (unpipedSource === prefixStream) {
+      prefixStream.resume();
+    }
   };
   const removeListeners = () => {
     source.removeListener('close', endPrefixStream);
     destination.removeListener('unpipe', drainPrefixStream);
   };
   source.once('close', endPrefixStream);
-  destination.once('unpipe', drainPrefixStream);
+  destination.on('unpipe', drainPrefixStream);
   // Resolve on `close`, which comes after the last chunk was written. Also
   // resolve on `error`, so that a transform error does not hang the caller.
   return new Promise((resolve) => {
@@ -150,15 +154,14 @@ export async function spawn(
     try {
       const toStr = () => `${command}${args ? ` ${args.join(' ')}` : ''}`;
       // The child must use pipes, not `inherit`, when we read its output to
-      // capture it or to add a prefix to each line. Its stdin stays inherited
-      // when we only read its output, so that it can still read input and does
-      // not wait for a pipe that is never closed.
+      // capture it or to add a prefix to each line. With `outputPrefix`, stdin
+      // stays inherited, so that a command can still read input and does not
+      // wait for a pipe that is never closed.
       const canInherit = pipeOutput && !captureOutput && !outputPrefix;
-      const showOutput = pipeOutput && !canInherit;
       const p = crossSpawn(command, args, {
         ...(canInherit
           ? { stdio: 'inherit' }
-          : showOutput
+          : outputPrefix
             ? { stdio: ['inherit', 'pipe', 'pipe'] }
             : {}),
         ...options,

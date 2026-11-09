@@ -6,10 +6,10 @@ import { promisify } from 'node:util';
 const execFileAsync = promisify(execFile);
 
 /**
- * A limit for each test. A spawn that never settles would otherwise block the
- * whole test run, because node:test has no default timeout.
+ * A limit for each child process that runs a test script. A spawn that never
+ * settles would otherwise keep the child alive after the test timed out.
  */
-const TIMEOUT_MS = 20_000;
+const CHILD_TIMEOUT_MS = 20_000;
 const spawnModuleUrl = new URL('../src/cp.js', import.meta.url).href;
 
 /**
@@ -57,7 +57,7 @@ async function runPipeScript(
   const { stderr, stdout } = await execFileAsync(
     process.execPath,
     ['--input-type=module', '-e', source],
-    { timeout: TIMEOUT_MS },
+    { timeout: CHILD_TIMEOUT_MS },
   );
   const markerIndex = stdout.lastIndexOf('RESULT:');
   const result = JSON.parse(
@@ -80,7 +80,7 @@ function slowLinesScript(label: string): string {
   `;
 }
 
-void describe('spawn outputPrefix', { timeout: TIMEOUT_MS }, () => {
+void describe('spawn outputPrefix', () => {
   void it('adds the prefix to each piped line and captures raw output', async () => {
     const { result, stdout } = await runPipeScript({
       captureOutput: true,
@@ -235,11 +235,11 @@ void describe('spawn outputPrefix', { timeout: TIMEOUT_MS }, () => {
         { outputPrefix: 'job: ', pipeOutput: true },
       );
     `;
-    const child = execFile(process.execPath, [
-      '--input-type=module',
-      '-e',
-      source,
-    ]);
+    const child = execFile(
+      process.execPath,
+      ['--input-type=module', '-e', source],
+      { timeout: CHILD_TIMEOUT_MS },
+    );
     assert.ok(child.stdout);
     let stdout = '';
     child.stdout.on('data', (chunk: Buffer) => {
@@ -272,15 +272,67 @@ void describe('spawn outputPrefix', { timeout: TIMEOUT_MS }, () => {
       );
       process.stderr.write('settled');
     `;
-    const child = execFile(process.execPath, [
-      '--input-type=module',
-      '-e',
-      source,
-    ]);
+    const child = execFile(
+      process.execPath,
+      ['--input-type=module', '-e', source],
+      { timeout: CHILD_TIMEOUT_MS },
+    );
     assert.ok(child.stdout);
     // Close the pipe after the first line, to cause EPIPE in the parent.
     child.stdout.once('data', () => {
       child.stdout?.destroy();
+    });
+    let stderr = '';
+    child.stderr?.on('data', (chunk: Buffer) => {
+      stderr += chunk.toString();
+    });
+    await new Promise<void>((resolve, reject) => {
+      child.once('close', resolve);
+      child.once('error', reject);
+    });
+
+    assert.equal(stderr, 'settled');
+  });
+
+  void it('settles when a parallel command finishes first', async () => {
+    // The destination unpipes every stream that ends, so a spawn must ignore
+    // the unpipe events of the other spawns.
+    const source = `
+      import { spawn } from ${JSON.stringify(spawnModuleUrl)};
+      process.stdout.on('error', () => {});
+      const quiet = ['-e', ${JSON.stringify(`
+        for (let index = 0; index < 5; index++) {
+          process.stdout.write('quiet ' + index + '\\n');
+        }
+      `)}];
+      const loud = ['-e', ${JSON.stringify(`
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        for (let index = 0; index < 200000; index++) {
+          process.stdout.write('loud ' + index + '\\n');
+        }
+      `)}];
+      await Promise.all([
+        spawn(process.execPath, quiet, { outputPrefix: 'q: ', pipeOutput: true }),
+        spawn(process.execPath, loud, { outputPrefix: 'l: ', pipeOutput: true }),
+      ]);
+      process.stderr.write('settled');
+    `;
+    const child = execFile(
+      process.execPath,
+      ['--input-type=module', '-e', source],
+      { timeout: CHILD_TIMEOUT_MS },
+    );
+    assert.ok(child.stdout);
+    // The quiet command ends first. Close the parent output after that, while
+    // the loud command is still writing.
+    let sawQuiet = false;
+    child.stdout.on('data', (chunk: Buffer) => {
+      if (!sawQuiet && chunk.toString().includes('q: quiet 4')) {
+        sawQuiet = true;
+        setTimeout(() => {
+          child.stdout?.destroy();
+        }, 80);
+      }
     });
     let stderr = '';
     child.stderr?.on('data', (chunk: Buffer) => {
