@@ -4,6 +4,12 @@ import { describe, it } from 'node:test';
 import { promisify } from 'node:util';
 
 const execFileAsync = promisify(execFile);
+
+/**
+ * A limit for each test. A spawn that never settles would otherwise block the
+ * whole test run, because node:test has no default timeout.
+ */
+const TIMEOUT_MS = 20_000;
 const spawnModuleUrl = new URL('../src/cp.js', import.meta.url).href;
 
 /**
@@ -48,11 +54,11 @@ async function runPipeScript(
     );
     process.stdout.write('RESULT:' + JSON.stringify(result));
   `;
-  const { stderr, stdout } = await execFileAsync(process.execPath, [
-    '--input-type=module',
-    '-e',
-    source,
-  ]);
+  const { stderr, stdout } = await execFileAsync(
+    process.execPath,
+    ['--input-type=module', '-e', source],
+    { timeout: TIMEOUT_MS },
+  );
   const markerIndex = stdout.lastIndexOf('RESULT:');
   const result = JSON.parse(
     stdout.slice(markerIndex + 'RESULT:'.length),
@@ -74,7 +80,7 @@ function slowLinesScript(label: string): string {
   `;
 }
 
-void describe('spawn outputPrefix', () => {
+void describe('spawn outputPrefix', { timeout: TIMEOUT_MS }, () => {
   void it('adds the prefix to each piped line and captures raw output', async () => {
     const { result, stdout } = await runPipeScript({
       captureOutput: true,
@@ -212,6 +218,80 @@ void describe('spawn outputPrefix', () => {
     ]);
 
     assert.equal(stdout, 'job: last after');
+  });
+
+  void it('passes stdin to the child when only the output is piped', async () => {
+    // A child that reads stdin to the end must finish. A pipe that is never
+    // closed would make it wait forever. The test closes the stdin of its own
+    // process, and the child inherits that stdin.
+    const source = `
+      import { spawn } from ${JSON.stringify(spawnModuleUrl)};
+      await spawn(
+        process.execPath,
+        ['-e', ${JSON.stringify(`
+          process.stdin.on('end', () => process.stdout.write('stdin ended\\n'));
+          process.stdin.resume();
+        `)}],
+        { outputPrefix: 'job: ', pipeOutput: true },
+      );
+    `;
+    const child = execFile(process.execPath, [
+      '--input-type=module',
+      '-e',
+      source,
+    ]);
+    assert.ok(child.stdout);
+    let stdout = '';
+    child.stdout.on('data', (chunk: Buffer) => {
+      stdout += chunk.toString();
+    });
+    child.stdin?.end();
+    await new Promise<void>((resolve, reject) => {
+      child.once('close', resolve);
+      child.once('error', reject);
+    });
+
+    assert.equal(stdout, 'job: stdin ended\n');
+  });
+
+  void it('settles when the destination of the piped output fails', async () => {
+    // Closing the read end of the parent output, as `head -1` does, makes the
+    // parent see EPIPE on stdout. The child keeps writing, so the spawn must
+    // still settle.
+    const source = `
+      import { spawn } from ${JSON.stringify(spawnModuleUrl)};
+      process.stdout.on('error', () => {});
+      await spawn(
+        process.execPath,
+        ['-e', ${JSON.stringify(`
+          for (let index = 0; index < 200000; index++) {
+            process.stdout.write('line ' + index + '\\n');
+          }
+        `)}],
+        { outputPrefix: 'job: ', pipeOutput: true },
+      );
+      process.stderr.write('settled');
+    `;
+    const child = execFile(process.execPath, [
+      '--input-type=module',
+      '-e',
+      source,
+    ]);
+    assert.ok(child.stdout);
+    // Close the pipe after the first line, to cause EPIPE in the parent.
+    child.stdout.once('data', () => {
+      child.stdout?.destroy();
+    });
+    let stderr = '';
+    child.stderr?.on('data', (chunk: Buffer) => {
+      stderr += chunk.toString();
+    });
+    await new Promise<void>((resolve, reject) => {
+      child.once('close', resolve);
+      child.once('error', reject);
+    });
+
+    assert.equal(stderr, 'settled');
   });
 
   void it('leaves output unchanged when no prefix is set', async () => {

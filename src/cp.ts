@@ -97,15 +97,27 @@ function forwardOutput(
   prefixStream.pipe(destination);
   // `pipe` ends the transform only when the source ends. A destroyed source
   // can close instead, so end the transform here to write the last line.
-  source.once('close', () => {
+  const endPrefixStream = () => {
     if (!prefixStream.writableEnded && !prefixStream.destroyed) {
       prefixStream.end();
     }
-  });
+  };
+  // A failed destination makes `pipe` unpipe the transform. The transform then
+  // holds its buffer and never closes, so read it to let the child finish.
+  const drainPrefixStream = () => {
+    prefixStream.resume();
+  };
+  const removeListeners = () => {
+    source.removeListener('close', endPrefixStream);
+    destination.removeListener('unpipe', drainPrefixStream);
+  };
+  source.once('close', endPrefixStream);
+  destination.once('unpipe', drainPrefixStream);
   // Resolve on `close`, which comes after the last chunk was written. Also
   // resolve on `error`, so that a transform error does not hang the caller.
   return new Promise((resolve) => {
     const done = () => {
+      removeListeners();
       resolve();
     };
     prefixStream.once('close', done);
@@ -138,10 +150,17 @@ export async function spawn(
     try {
       const toStr = () => `${command}${args ? ` ${args.join(' ')}` : ''}`;
       // The child must use pipes, not `inherit`, when we read its output to
-      // capture it or to add a prefix to each line.
+      // capture it or to add a prefix to each line. Its stdin stays inherited
+      // when we only read its output, so that it can still read input and does
+      // not wait for a pipe that is never closed.
       const canInherit = pipeOutput && !captureOutput && !outputPrefix;
+      const showOutput = pipeOutput && !canInherit;
       const p = crossSpawn(command, args, {
-        ...(canInherit ? { stdio: 'inherit' } : {}),
+        ...(canInherit
+          ? { stdio: 'inherit' }
+          : showOutput
+            ? { stdio: ['inherit', 'pipe', 'pipe'] }
+            : {}),
         ...options,
       });
 
