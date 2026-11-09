@@ -103,7 +103,7 @@ function forwardOutput(
     }
   });
   // Resolve on `close`, which comes after the last chunk was written. Also
-  // resolve on `error`, so that a broken stream cannot hang the caller.
+  // resolve on `error`, so that a transform error does not hang the caller.
   return new Promise((resolve) => {
     const done = () => {
       resolve();
