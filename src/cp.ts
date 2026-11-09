@@ -68,6 +68,47 @@ function createLinePrefixStream(prefix: string): Transform {
 }
 
 /**
+ * The prefixed output streams of each destination.
+ *
+ * A destination that fails unpipes its streams. A stream that nobody reads then
+ * holds its buffer and never closes, so its command waits forever. Read such a
+ * stream to let the command finish.
+ *
+ * One listener for each destination keeps the listener count low when many
+ * commands run in parallel.
+ */
+const prefixedStreamsByDestination = new WeakMap<
+  NodeJS.WritableStream,
+  Set<NodeJS.ReadableStream>
+>();
+
+function watchDestination(
+  destination: NodeJS.WritableStream,
+  stream: NodeJS.ReadableStream,
+): void {
+  let streams = prefixedStreamsByDestination.get(destination);
+  if (!streams) {
+    const newStreams = new Set<NodeJS.ReadableStream>();
+    prefixedStreamsByDestination.set(destination, newStreams);
+    destination.on('unpipe', (unpipedStream: NodeJS.ReadableStream) => {
+      // Ignore the streams of other commands, and ignore normal ends.
+      if (newStreams.has(unpipedStream)) {
+        unpipedStream.resume();
+      }
+    });
+    streams = newStreams;
+  }
+  streams.add(stream);
+}
+
+function unwatchDestination(
+  destination: NodeJS.WritableStream,
+  stream: NodeJS.ReadableStream,
+): void {
+  prefixedStreamsByDestination.get(destination)?.delete(stream);
+}
+
+/**
  * Copy the output of `source` into `destination`, with an optional prefix.
  *
  * The returned promise resolves after the last chunk was written, so that
@@ -102,26 +143,14 @@ function forwardOutput(
       prefixStream.end();
     }
   };
-  // A failed destination makes `pipe` unpipe the transform. The transform then
-  // holds its buffer and never closes, so read it to let the child finish.
-  // The destination also unpipes streams of other spawns, so keep the listener
-  // (not `once`) and check which stream unpiped.
-  const drainPrefixStream = (unpipedSource: NodeJS.ReadableStream) => {
-    if (unpipedSource === prefixStream) {
-      prefixStream.resume();
-    }
-  };
-  const removeListeners = () => {
-    source.removeListener('close', endPrefixStream);
-    destination.removeListener('unpipe', drainPrefixStream);
-  };
   source.once('close', endPrefixStream);
-  destination.on('unpipe', drainPrefixStream);
+  watchDestination(destination, prefixStream);
   // Resolve on `close`, which comes after the last chunk was written. Also
   // resolve on `error`, so that a transform error does not hang the caller.
   return new Promise((resolve) => {
     const done = () => {
-      removeListeners();
+      source.removeListener('close', endPrefixStream);
+      unwatchDestination(destination, prefixStream);
       resolve();
     };
     prefixStream.once('close', done);
@@ -158,10 +187,11 @@ export async function spawn(
       // stays inherited, so that a command can still read input and does not
       // wait for a pipe that is never closed.
       const canInherit = pipeOutput && !captureOutput && !outputPrefix;
+      const prefixOutput = pipeOutput && !!outputPrefix;
       const p = crossSpawn(command, args, {
         ...(canInherit
           ? { stdio: 'inherit' }
-          : outputPrefix
+          : prefixOutput
             ? { stdio: ['inherit', 'pipe', 'pipe'] }
             : {}),
         ...options,

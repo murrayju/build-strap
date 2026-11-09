@@ -346,6 +346,31 @@ void describe('spawn outputPrefix', () => {
     assert.equal(stderr, 'settled');
   });
 
+  void it('keeps the listener count low for parallel commands', async () => {
+    // Each command must not add its own listener to the shared output stream,
+    // because Node warns when a stream has more than 10.
+    const source = `
+      import { spawn } from ${JSON.stringify(spawnModuleUrl)};
+      const jobs = [];
+      for (let index = 0; index < 8; index++) {
+        jobs.push(
+          spawn(process.execPath, ['-e', 'process.stdout.write(\\'x\\\\n\\')'], {
+            outputPrefix: 'job ' + index + ': ',
+            pipeOutput: true,
+          }),
+        );
+      }
+      await Promise.all(jobs);
+    `;
+    const { stderr } = await execFileAsync(
+      process.execPath,
+      ['--input-type=module', '-e', source],
+      { timeout: CHILD_TIMEOUT_MS },
+    );
+
+    assert.equal(stderr.includes('MaxListenersExceededWarning'), false);
+  });
+
   void it('leaves output unchanged when no prefix is set', async () => {
     const { stdout } = await runPipeScript({
       captureOutput: true,
