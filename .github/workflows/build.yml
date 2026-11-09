@@ -1,42 +1,116 @@
 name: CI Build
 on:
   push:
-    branches: ["**"]
-    # Releases are triggered by pushing a semver tag to a commit on main
+    # A pull request already runs the checks on its merge commit, so a push
+    # only needs to run on the default branch (which publishes a `next`
+    # pre-release) and on the semver tags that publish a release.
+    # Keep `main` in sync with the repository default branch and with
+    # `buildStrap.mainBranch` in package.json.
+    branches: [main]
     tags: ["v[0-9]+.[0-9]+.[0-9]+", "v[0-9]+.[0-9]+.[0-9]+-*"]
   pull_request:
     branches: ["**"]
+    # A label change re-runs the checks: adding the publish-npm label publishes
+    # with no new commit, and removing it replaces the run that would publish.
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+# Read-only by default. A job that needs more asks for it in the job.
 permissions:
-  # Required for OIDC authentication to npm (https://docs.npmjs.com/trusted-publishers)
-  id-token: write
-  # Required to create the GitHub release for a semver tag
-  contents: write
+  contents: read
 concurrency:
   group: build-${{ github.ref }}
   cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  lint:
+    # Pin the runner image: the ubuntu-latest label moves to a new Ubuntu
+    # release, which prints a migration notice on every run.
+    runs-on: ubuntu-26.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Lint and check formatting
+        # Fail instead of fixing, so that CI shows the problems
+        run: ./bs lint --lint-no-fix
+  test:
+    runs-on: ubuntu-26.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Compile and run tests
+        run: ./bs test
+  build:
+    # Pack only after the code passes lint and tests
+    needs: [lint, test]
+    runs-on: ubuntu-26.04
+    permissions:
+      # Required for OIDC authentication to npm (https://docs.npmjs.com/trusted-publishers)
+      id-token: write
+    outputs:
+      # Set by a tag build only
+      version: ${{ steps.version.outputs.value }}
+    steps:
+      - name: Publish gate
+        id: gate
+        # Publish from a semver tag, a push to the default branch, or a pull
+        # request in this repository with the publish-npm label. Every other
+        # build packs the tarball only, including a pull request from a fork,
+        # because a fork run cannot get the npm credentials.
+        #
+        # The ref check runs in the shell, because the GitHub expression `==`
+        # ignores case and would also match a work branch named `MAIN`.
+        env:
+          IS_TAG: ${{ startsWith(github.ref, 'refs/tags/') }}
+          HAS_PUBLISH_LABEL: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'publish-npm') }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          publish=false
+          if [ "$IS_TAG" = "true" ] || [ "$HAS_PUBLISH_LABEL" = "true" ] ||
+             { [ "$GITHUB_EVENT_NAME" = "push" ] && [ "$GITHUB_REF" = "refs/heads/$DEFAULT_BRANCH" ]; }; then
+            publish=true
+          fi
+          echo "publish=$publish" >> "$GITHUB_OUTPUT"
+          echo "Publish to npm: $publish"
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # Need full history and the main branch ref so that a release can
           # verify the tagged commit is contained in main
           fetch-depth: 0
+      # Lint and tests already ran in their own jobs
+      - name: Build and Package
+        if: ${{ steps.gate.outputs.publish != 'true' }}
+        run: ./bs package --buildNum=$GITHUB_RUN_NUMBER --no-lint --no-test
       - name: Build and NPM Publish
         # For a semver tag, publishes the release version (npm dist-tag `latest`).
         # Otherwise publishes a pre-release (`next` for main, `branch` elsewhere).
-        run: ./bs publish --buildNum=$GITHUB_RUN_NUMBER
+        if: ${{ steps.gate.outputs.publish == 'true' }}
+        run: ./bs publish --buildNum=$GITHUB_RUN_NUMBER --no-lint --no-test
       - name: Capture version
+        id: version
         if: ${{ startsWith(github.ref, 'refs/tags/') }}
-        run: echo "VERSION=$(./nub ./targets/run.ts printNpmVersion --buildNum=$GITHUB_RUN_NUMBER --silence-buildLog 2> /dev/null)" >> $GITHUB_ENV
+        run: echo "value=$(./nub ./targets/run.ts printNpmVersion --buildNum=$GITHUB_RUN_NUMBER --silence-buildLog 2> /dev/null)" >> "$GITHUB_OUTPUT"
+  release:
+    # This job is the only one that can write to the repository, and it runs
+    # for a semver tag only. It builds the tarball again, so that the job that
+    # publishes to npm keeps a read-only repository token.
+    needs: [build]
+    if: ${{ startsWith(github.ref, 'refs/tags/') }}
+    runs-on: ubuntu-26.04
+    permissions:
+      # Required to create the GitHub release
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The same history the build used, so that the tarball matches
+          fetch-depth: 0
+      - name: Build package
+        run: ./bs package --buildNum=$GITHUB_RUN_NUMBER --no-lint --no-test
       - name: GH Release
-        uses: softprops/action-gh-release@v3
-        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # v3.0.4
         with:
           tag_name: ${{ github.ref_name }}
-          name: ${{ env.VERSION }}
+          name: ${{ needs.build.outputs.version }}
           prerelease: ${{ contains(github.ref_name, '-') }}
           generate_release_notes: true
           files: out/*.tgz
