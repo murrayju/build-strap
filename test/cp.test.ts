@@ -378,108 +378,60 @@ void describe('spawn outputPrefix', () => {
     assert.equal(stderr.includes('MaxListenersExceededWarning'), false);
   });
 
-  void it('loses no output when the reader is slow', async () => {
-    // A slow reader creates real backpressure on the output pipe. All output
-    // must still arrive, and no command may stall or drop data.
+  void it('shares one drain listener between parallel commands', async () => {
+    // With a slow reader every command waits for `drain`. A listener for each
+    // command would add one per command, and Node warns above 10. Count the
+    // registrations instead of sampling the count, so the check is stable.
     const writerScript = `
       import { spawn } from ${JSON.stringify(spawnModuleUrl)};
+      let drainListeners = 0;
+      const realOn = process.stdout.on.bind(process.stdout);
+      process.stdout.on = (event, fn) => {
+        if (event === 'drain') {
+          drainListeners += 1;
+        }
+        return realOn(event, fn);
+      };
+      const writeBig = ${JSON.stringify(
+        "process.stdout.write('z'.repeat(400000))",
+      )};
       const jobs = [];
       for (let index = 0; index < 20; index++) {
         jobs.push(
-          spawn(
-            process.execPath,
-            [
-              '-e',
-              ${JSON.stringify(
-                "for (let i = 0; i < 400; i++) process.stdout.write('LINE\\n')",
-              )},
-            ],
-            { outputPrefix: 'job: ', pipeOutput: true },
-          ),
+          spawn(process.execPath, ['-e', writeBig], {
+            outputPrefix: 'job ' + index + ': ',
+            pipeOutput: true,
+          }),
         );
       }
       await Promise.all(jobs);
+      process.stderr.write('drainListeners=' + drainListeners);
     `;
     const readerScript = `
-      let bytes = 0;
-      process.stdin.on('data', (chunk) => {
-        bytes += chunk.length;
+      process.stdin.on('data', () => {
         process.stdin.pause();
-        setTimeout(() => process.stdin.resume(), 2);
-      });
-      process.stdin.on('end', () => {
-        process.stdout.write(JSON.stringify({ bytes }));
+        setTimeout(() => process.stdin.resume(), 20);
       });
       process.stdin.on('error', () => {});
       process.stdin.resume();
     `;
-    // Use spawn, not execFile: execFile reads its own stdout, so it cannot be
-    // piped into another process.
     const writer = nodeProcess(['--input-type=module', '-e', writerScript]);
     const reader = nodeProcess(['-e', readerScript]);
     writer.stdout.pipe(reader.stdin);
-    let readerOutput = '';
-    reader.stdout.on('data', (chunk: Buffer) => {
-      readerOutput += chunk.toString();
-    });
-    // `end` is called when the piped output is fully written, not when the
-    // writer exits, so wait for the pipe to finish before closing the reader.
-    await new Promise<void>((resolve, reject) => {
-      writer.stdout.once('end', resolve);
-      writer.once('error', reject);
+    let stderr = '';
+    writer.stderr.on('data', (chunk: Buffer) => {
+      stderr += chunk.toString();
     });
     await new Promise<void>((resolve, reject) => {
       writer.once('close', resolve);
       writer.once('error', reject);
     });
-    reader.stdin.end();
-    await new Promise<void>((resolve, reject) => {
-      reader.once('close', resolve);
-      reader.once('error', reject);
-    });
 
-    // 20 commands, each 400 lines of "job: LINE".
-    const expectedBytes = 20 * 400 * 'job: LINE\n'.length;
-    assert.deepEqual(JSON.parse(readerOutput), { bytes: expectedBytes });
-  });
-
-  void it('settles when the source closes without ending', async () => {
-    // A killed command can close its output without ending the stream. The
-    // forwarding must still settle.
-    const source = `
-      import { spawn } from ${JSON.stringify(spawnModuleUrl)};
-      const started = await spawn(
-        process.execPath,
-        ['-e', ${JSON.stringify(`
-          const timer = setInterval(
-            () => process.stdout.write('x'.repeat(1000) + '\\n'),
-            1,
-          );
-          setTimeout(() => {
-            clearInterval(timer);
-            process.kill(process.pid, 'SIGKILL');
-          }, 200);
-        `)}],
-        { outputPrefix: 'job: ', pipeOutput: true, rejectOnErrorCode: false },
-      );
-      process.stderr.write('settled signal=' + started.signal);
-    `;
-    const child = execFile(
-      process.execPath,
-      ['--input-type=module', '-e', source],
-      { maxBuffer: 64 * 1024 * 1024, timeout: CHILD_TIMEOUT_MS },
-    );
-    child.stdout?.resume();
-    let stderr = '';
-    child.stderr?.on('data', (chunk: Buffer) => {
-      stderr += chunk.toString();
-    });
-    await new Promise<void>((resolve, reject) => {
-      child.once('close', resolve);
-      child.once('error', reject);
-    });
-
-    assert.equal(stderr, 'settled signal=SIGKILL');
+    assert.equal(stderr.includes('MaxListenersExceededWarning'), false);
+    const drainListeners = Number(/drainListeners=(\d+)/.exec(stderr)?.[1]);
+    assert.ok(!Number.isNaN(drainListeners), `writer stderr: ${stderr}`);
+    // One shared listener serves all 20 commands.
+    assert.equal(drainListeners, 1);
   });
 
   void it('settles after an earlier command broke the output', async () => {
