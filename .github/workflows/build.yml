@@ -1,8 +1,10 @@
 name: CI Build
 on:
   push:
-    branches: ["**"]
-    # Releases are triggered by pushing a semver tag to a commit on main
+    # A pull request already runs the checks on its merge commit, so a push
+    # only needs to run on the default branch (which publishes a `next`
+    # pre-release) and on the semver tags that publish a release.
+    branches: [main]
     tags: ["v[0-9]+.[0-9]+.[0-9]+", "v[0-9]+.[0-9]+.[0-9]+-*"]
   pull_request:
     branches: ["**"]
