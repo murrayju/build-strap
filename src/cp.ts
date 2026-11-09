@@ -1,6 +1,7 @@
 import cp from 'child_process';
 import crossSpawn from 'cross-spawn';
 import { Transform } from 'stream';
+import { StringDecoder } from 'string_decoder';
 import { promisify } from 'util';
 
 import { buildLog } from './run.js';
@@ -22,40 +23,62 @@ export interface SpawnOptions extends cp.SpawnOptions {
  * A line can arrive in many chunks. The stream holds the incomplete last part
  * of a chunk until the rest of the line arrives. At the end of the stream, the
  * stream writes any remaining partial line.
+ *
+ * A carriage return also ends a line, so that progress output that redraws a
+ * line stays readable.
  */
 function createLinePrefixStream(prefix: string): Transform {
+  const decoder = new StringDecoder('utf8');
   let partialLine = '';
   return new Transform({
     flush(callback) {
-      if (partialLine) {
-        this.push(`${prefix}${partialLine}`);
+      const remainder = partialLine + decoder.end();
+      if (remainder) {
+        this.push(`${prefix}${remainder}`);
       }
       callback();
     },
     transform(chunk: Buffer, _encoding, callback) {
-      const lines = `${partialLine}${chunk.toString()}`.split('\n');
-      partialLine = lines.pop() ?? '';
-      for (const line of lines) {
-        this.push(`${prefix}${line}\n`);
+      // Decode with StringDecoder, so that a character that is split across
+      // two chunks is not broken.
+      const parts = (partialLine + decoder.write(chunk)).split(/(\r\n|\r|\n)/);
+      // The last part has no line break, so the line is not complete yet.
+      partialLine = parts.pop() ?? '';
+      for (let index = 0; index < parts.length; index += 2) {
+        this.push(`${prefix}${parts[index]}${parts[index + 1]}`);
       }
       callback();
     },
   });
 }
 
-/** Copy the output of `source` into `destination`, with an optional prefix. */
+/**
+ * Copy the output of `source` into `destination`, with an optional prefix.
+ *
+ * The returned promise resolves after the last chunk was written, so that
+ * output that follows `await spawn(...)` comes after the child output.
+ */
 function forwardOutput(
   source: NodeJS.ReadableStream | null,
   destination: NodeJS.WritableStream,
   prefix?: string,
-): void {
+): Promise<void> {
   if (!source) {
-    return;
+    return Promise.resolve();
   }
   const reader = prefix
     ? (source.pipe(createLinePrefixStream(prefix)) as NodeJS.ReadableStream)
     : source;
   reader.pipe(destination);
+  // Resolve on either event, because a killed child can close the stream
+  // without ending it.
+  return new Promise((resolve) => {
+    const done = () => {
+      resolve();
+    };
+    reader.once('end', done);
+    reader.once('close', done);
+  });
 }
 
 export interface SpawnResult {
@@ -114,26 +137,33 @@ export async function spawn(
         }
       }
 
+      const pipedOutput: Promise<void>[] = [];
       if (pipeOutput && !canInherit) {
-        forwardOutput(p.stdout, process.stdout, outputPrefix);
-        forwardOutput(p.stderr, process.stderr, outputPrefix);
+        pipedOutput.push(
+          forwardOutput(p.stdout, process.stdout, outputPrefix),
+          forwardOutput(p.stderr, process.stderr, outputPrefix),
+        );
       }
 
       let exitHandled = false;
       const handleExit = (code: number, signal: string) => {
         if (!exitHandled) {
-          if (rejectOnErrorCode && code) {
-            reject(new Error(`${toStr()} => ${code} (error)`));
-          } else {
-            resolve({
-              code,
-              output,
-              signal,
-              stderr,
-              stdout,
-            });
-          }
           exitHandled = true;
+          // Wait for the piped output, so that the last line is written before
+          // the caller can write its own output.
+          void Promise.all(pipedOutput).then(() => {
+            if (rejectOnErrorCode && code) {
+              reject(new Error(`${toStr()} => ${code} (error)`));
+            } else {
+              resolve({
+                code,
+                output,
+                signal,
+                stderr,
+                stdout,
+              });
+            }
+          });
         }
       };
 

@@ -119,6 +119,47 @@ void describe('spawn outputPrefix', () => {
     assert.equal(stdout, 'job: partial');
   });
 
+  void it('keeps a character that is split across chunks intact', async () => {
+    const childScript = `
+      process.stdout.write(Buffer.from([0xc3]));
+      setTimeout(() => process.stdout.write(Buffer.from([0xa9, 0x0a])), 10);
+    `;
+    const { stdout } = await runPipeScript(
+      { outputPrefix: 'job: ', pipeOutput: true },
+      childScript,
+    );
+
+    assert.equal(stdout, 'job: \u00e9\n');
+  });
+
+  void it('adds the prefix after a carriage return', async () => {
+    const { stdout } = await runPipeScript(
+      { outputPrefix: 'job: ', pipeOutput: true },
+      `process.stdout.write('10%\\r50%\\r\\n')`,
+    );
+
+    assert.equal(stdout, 'job: 10%\rjob: 50%\r\n');
+  });
+
+  void it('writes the last line before the caller continues', async () => {
+    const source = `
+      import { spawn } from ${JSON.stringify(spawnModuleUrl)};
+      await spawn(
+        process.execPath,
+        ['-e', ${JSON.stringify(`process.stdout.write('last')`)}],
+        { outputPrefix: 'job: ', pipeOutput: true },
+      );
+      process.stdout.write(' after');
+    `;
+    const { stdout } = await execFileAsync(process.execPath, [
+      '--input-type=module',
+      '-e',
+      source,
+    ]);
+
+    assert.equal(stdout, 'job: last after');
+  });
+
   void it('leaves output unchanged when no prefix is set', async () => {
     const { stdout } = await runPipeScript({
       captureOutput: true,
