@@ -68,52 +68,15 @@ function createLinePrefixStream(prefix: string): Transform {
 }
 
 /**
- * The prefixed output streams of each destination.
- *
- * A destination that fails unpipes its streams. A stream that nobody reads then
- * holds its buffer and never closes, so its command waits forever. Read such a
- * stream to let the command finish.
- *
- * One listener for each destination keeps the listener count low when many
- * commands run in parallel.
- */
-const prefixedStreamsByDestination = new WeakMap<
-  NodeJS.WritableStream,
-  Set<NodeJS.ReadableStream>
->();
-
-function watchDestination(
-  destination: NodeJS.WritableStream,
-  stream: NodeJS.ReadableStream,
-): void {
-  let streams = prefixedStreamsByDestination.get(destination);
-  if (!streams) {
-    const newStreams = new Set<NodeJS.ReadableStream>();
-    prefixedStreamsByDestination.set(destination, newStreams);
-    destination.on('unpipe', (unpipedStream: NodeJS.ReadableStream) => {
-      // Ignore the streams of other commands. A stream that already ended is
-      // still in the set, and `resume()` does nothing for such a stream.
-      if (newStreams.has(unpipedStream)) {
-        unpipedStream.resume();
-      }
-    });
-    streams = newStreams;
-  }
-  streams.add(stream);
-}
-
-function unwatchDestination(
-  destination: NodeJS.WritableStream,
-  stream: NodeJS.ReadableStream,
-): void {
-  prefixedStreamsByDestination.get(destination)?.delete(stream);
-}
-
-/**
  * Copy the output of `source` into `destination`, with an optional prefix.
  *
  * The returned promise resolves after the last chunk was written, so that
  * output that follows `await spawn(...)` comes after the child output.
+ *
+ * The prefixed path writes to the destination by hand instead of using `pipe`.
+ * A destination that broke in an earlier command stays in the `needDrain` state,
+ * and `pipe` would then pause the new stream and wait for a `drain` event that
+ * never comes. A direct write reports the error through its callback instead.
  */
 function forwardOutput(
   source: NodeJS.ReadableStream | null,
@@ -134,26 +97,48 @@ function forwardOutput(
       source.once('close', done);
     });
   }
+
   const prefixStream = createLinePrefixStream(prefix);
   source.pipe(prefixStream);
-  prefixStream.pipe(destination);
-  // `pipe` ends the transform only when the source ends. A destroyed source
-  // can close instead, so end the transform here to write the last line.
-  const endPrefixStream = () => {
-    if (!prefixStream.writableEnded && !prefixStream.destroyed) {
-      prefixStream.end();
+
+  // A failed or broken destination never accepts more output. Drop the rest, so
+  // that the command can finish and the promise can settle.
+  const state = { canWrite: true, waitingForDrain: false };
+  const resumeOnDrain = () => {
+    state.waitingForDrain = false;
+    prefixStream.resume();
+  };
+  const write = (chunk: string) => {
+    if (!chunk || !state.canWrite) {
+      return;
+    }
+    const accepted = destination.write(chunk, (err?: Error | null) => {
+      if (err) {
+        state.canWrite = false;
+        // Stop waiting for a `drain` that cannot come, and release the output.
+        if (state.waitingForDrain) {
+          resumeOnDrain();
+        }
+      }
+    });
+    if (!accepted && !state.waitingForDrain) {
+      // Slow reader: wait for `drain` before reading more of the output.
+      state.waitingForDrain = true;
+      prefixStream.pause();
+      destination.once('drain', resumeOnDrain);
     }
   };
-  source.once('close', endPrefixStream);
-  watchDestination(destination, prefixStream);
-  // Resolve on `close`, which comes after the last chunk was written. Also
-  // resolve on `error`, so that a transform error does not hang the caller.
+  prefixStream.on('data', write);
+
   return new Promise((resolve) => {
     const done = () => {
-      source.removeListener('close', endPrefixStream);
-      unwatchDestination(destination, prefixStream);
+      prefixStream.removeListener('data', write);
+      destination.removeListener('drain', resumeOnDrain);
+      state.waitingForDrain = false;
+      prefixStream.resume();
       resolve();
     };
+    prefixStream.once('end', done);
     prefixStream.once('close', done);
     prefixStream.once('error', done);
   });

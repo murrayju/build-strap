@@ -347,12 +347,12 @@ void describe('spawn outputPrefix', () => {
   });
 
   void it('keeps the listener count low for parallel commands', async () => {
-    // Each command must not add its own listener to the shared output stream,
-    // because Node warns when a stream has more than 10.
+    // Each command must not add listeners to the shared output stream, because
+    // Node warns when a stream has more than 10.
     const source = `
       import { spawn } from ${JSON.stringify(spawnModuleUrl)};
       const jobs = [];
-      for (let index = 0; index < 8; index++) {
+      for (let index = 0; index < 20; index++) {
         jobs.push(
           spawn(process.execPath, ['-e', 'process.stdout.write(\\'x\\\\n\\')'], {
             outputPrefix: 'job ' + index + ': ',
@@ -369,6 +369,53 @@ void describe('spawn outputPrefix', () => {
     );
 
     assert.equal(stderr.includes('MaxListenersExceededWarning'), false);
+  });
+
+  void it('settles after an earlier command broke the output', async () => {
+    // An earlier EPIPE leaves `process.stdout` in the `needDrain` state. A
+    // later prefixed command must not wait for a `drain` event that never
+    // comes.
+    const source = `
+      import { spawn } from ${JSON.stringify(spawnModuleUrl)};
+      process.stdout.on('error', () => {});
+      // Fill the pipe and let the reader close it, to reach EPIPE.
+      const big = 'x'.repeat(512 * 1024);
+      for (let index = 0; index < 40; index++) {
+        process.stdout.write(big);
+      }
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      if (!process.stdout.writableNeedDrain) {
+        process.stderr.write('no backpressure; test cannot run');
+        process.exit(2);
+      }
+      // More output than the prefix stream and the pipe can hold.
+      await spawn(
+        process.execPath,
+        ['-e', "process.stdout.write('y'.repeat(300000))"],
+        { outputPrefix: 'job: ', pipeOutput: true },
+      );
+      process.stderr.write('settled');
+    `;
+    const child = execFile(
+      process.execPath,
+      ['--input-type=module', '-e', source],
+      { timeout: CHILD_TIMEOUT_MS },
+    );
+    assert.ok(child.stdout);
+    // Read one line, then close the pipe, so the parent sees EPIPE.
+    child.stdout.once('data', () => {
+      child.stdout?.destroy();
+    });
+    let stderr = '';
+    child.stderr?.on('data', (chunk: Buffer) => {
+      stderr += chunk.toString();
+    });
+    await new Promise<void>((resolve, reject) => {
+      child.once('close', resolve);
+      child.once('error', reject);
+    });
+
+    assert.equal(stderr, 'settled');
   });
 
   void it('leaves output unchanged when no prefix is set', async () => {
