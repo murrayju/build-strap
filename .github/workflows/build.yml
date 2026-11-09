@@ -17,7 +17,9 @@ concurrency:
   cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
 jobs:
   lint:
-    runs-on: ubuntu-latest
+    # Pin the runner image: the ubuntu-latest label moves to a new Ubuntu
+    # release, which prints a migration notice on every run.
+    runs-on: ubuntu-26.04
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -25,7 +27,7 @@ jobs:
         # Fail instead of fixing, so that CI shows the problems
         run: ./bs lint --lint-no-fix
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -34,7 +36,7 @@ jobs:
   build:
     # Publish only after the code passes lint and tests
     needs: [lint, test]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       # Required for OIDC authentication to npm (https://docs.npmjs.com/trusted-publishers)
       id-token: write
