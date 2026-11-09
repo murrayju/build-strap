@@ -4,7 +4,12 @@ import path from 'path';
 
 import { brew } from './brew.js';
 import { spawn, SpawnOptions, SpawnResult } from './cp.js';
-import { dockerIsRunning } from './docker.js';
+import {
+  dockerIsRunning,
+  getDockerInfo,
+  throwIfDockerUnresponsive,
+  waitForDockerToStart,
+} from './docker.js';
 import { cmdExists, isMac } from './env.js';
 import { buildLog } from './run.js';
 
@@ -21,30 +26,17 @@ export const ensureOrbStackInstalled = async (
 };
 
 export const ensureOrbStackRunning = async (timeoutSeconds = 600) => {
-  if (!(await dockerIsRunning())) {
-    if (!isMac()) {
-      throw new Error('OrbStack is only supported on macOS');
-    }
-    buildLog('docker is not running, starting OrbStack...');
-    await spawn('open', ['-a', '/Applications/OrbStack.app']);
-
-    let attempts = 0;
-    while (!(await dockerIsRunning())) {
-      attempts += 1;
-      if (attempts % 5 === 0) {
-        process.stdout.write('.');
-      }
-      if (attempts > timeoutSeconds) {
-        throw new Error('Timeout starting OrbStack');
-      }
-      await new Promise((resolve) => {
-        setTimeout(resolve, 1000);
-      });
-    }
-    if (attempts >= 5) {
-      process.stdout.write('\n');
-    }
+  const info = await getDockerInfo();
+  if (info.status === 'running') {
+    return;
   }
+  throwIfDockerUnresponsive(info);
+  if (!isMac()) {
+    throw new Error('OrbStack is only supported on macOS');
+  }
+  buildLog('docker is not running, starting OrbStack...');
+  await spawn('open', ['-a', '/Applications/OrbStack.app']);
+  await waitForDockerToStart(timeoutSeconds, 'OrbStack');
 };
 
 const defaultConfig = {

@@ -23,6 +23,7 @@ export default async function lint() {
       autoFix ? '--write' : '--check',
       'src',
       'targets',
+      'test',
     ],
     options,
   );

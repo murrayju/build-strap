@@ -6,5 +6,5 @@
     "outDir": "build",
     "resolveJsonModule": true
   },
-  "include": ["src/**/*", "targets/**/*"]
+  "include": ["src/**/*", "targets/**/*", "test/**/*"]
 }
