@@ -26,6 +26,8 @@ curl -o nub https://raw.githubusercontent.com/murrayju/nub-strap/main/nub && chm
 }
 ```
 
+nub also installs in the mode of another package manager, and keeps that manager's lockfile. This project declares `pnpm` and keeps a `pnpm-lock.yaml`, so that a dependency bot can update `package.json` and the lockfile in the same pull request.
+
 - Add a `bs` script, which installs dependencies and runs your build targets.
 
 ```
