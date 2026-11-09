@@ -68,6 +68,34 @@ function createLinePrefixStream(prefix: string): Transform {
 }
 
 /**
+ * The commands that wait for each destination to drain.
+ *
+ * One `drain` listener for each destination serves all of them, so that many
+ * commands which write at once do not add more than 10 listeners.
+ */
+const drainWaiters = new WeakMap<NodeJS.WritableStream, Set<() => void>>();
+
+function waitForDrain(destination: NodeJS.WritableStream, onDrain: () => void) {
+  let waiters = drainWaiters.get(destination);
+  if (!waiters) {
+    const newWaiters = new Set<() => void>();
+    drainWaiters.set(destination, newWaiters);
+    destination.on('drain', () => {
+      // Copy the set, because a waiter can remove itself while it runs.
+      for (const waiter of [...newWaiters]) {
+        newWaiters.delete(waiter);
+        waiter();
+      }
+    });
+    waiters = newWaiters;
+  }
+  waiters.add(onDrain);
+  return () => {
+    waiters.delete(onDrain);
+  };
+}
+
+/**
  * Copy the output of `source` into `destination`, with an optional prefix.
  *
  * The returned promise resolves after the last chunk was written, so that
@@ -102,40 +130,58 @@ function forwardOutput(
   source.pipe(prefixStream);
 
   // A failed or broken destination never accepts more output. Drop the rest, so
-  // that the command can finish and the promise can settle.
-  const state = { canWrite: true, waitingForDrain: false };
-  const resumeOnDrain = () => {
-    state.waitingForDrain = false;
+  // that the command can finish and the promise can settle. The same applies to
+  // a destination that is already gone.
+  const state = {
+    canWrite: true,
+    stopWaitingForDrain: null as null | (() => void),
+  };
+  const stopWaitingForDrain = () => {
+    state.stopWaitingForDrain?.();
+    state.stopWaitingForDrain = null;
     prefixStream.resume();
   };
   const write = (chunk: string) => {
     if (!chunk || !state.canWrite) {
       return;
     }
+    if ((destination as { destroyed?: boolean }).destroyed) {
+      state.canWrite = false;
+      stopWaitingForDrain();
+      return;
+    }
     const accepted = destination.write(chunk, (err?: Error | null) => {
       if (err) {
         state.canWrite = false;
         // Stop waiting for a `drain` that cannot come, and release the output.
-        if (state.waitingForDrain) {
-          resumeOnDrain();
-        }
+        stopWaitingForDrain();
       }
     });
-    if (!accepted && !state.waitingForDrain) {
+    if (!accepted && !state.stopWaitingForDrain) {
       // Slow reader: wait for `drain` before reading more of the output.
-      state.waitingForDrain = true;
       prefixStream.pause();
-      destination.once('drain', resumeOnDrain);
+      state.stopWaitingForDrain = waitForDrain(
+        destination,
+        stopWaitingForDrain,
+      );
     }
   };
   prefixStream.on('data', write);
 
+  // `pipe` ends the transform only when the source ends. A destroyed source can
+  // close instead, so end the transform here to write the last line.
+  const endPrefixStream = () => {
+    if (!prefixStream.writableEnded && !prefixStream.destroyed) {
+      prefixStream.end();
+    }
+  };
+  source.once('close', endPrefixStream);
+
   return new Promise((resolve) => {
     const done = () => {
+      source.removeListener('close', endPrefixStream);
       prefixStream.removeListener('data', write);
-      destination.removeListener('drain', resumeOnDrain);
-      state.waitingForDrain = false;
-      prefixStream.resume();
+      stopWaitingForDrain();
       resolve();
     };
     prefixStream.once('end', done);
