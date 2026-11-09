@@ -32,7 +32,8 @@ export interface SpawnOptions extends cp.SpawnOptions {
  *
  * A carriage return also ends a line, so that progress output that redraws a
  * line stays readable. A trailing carriage return is held back, so that a
- * following line feed stays attached to it.
+ * following line feed stays attached to it. A progress line that ends with a
+ * carriage return is therefore written when the next chunk arrives.
  */
 function createLinePrefixStream(prefix: string): Transform {
   const decoder = new StringDecoder('utf8');
@@ -97,14 +98,18 @@ function forwardOutput(
   // `pipe` ends the transform only when the source ends. A destroyed source
   // can close instead, so end the transform here to write the last line.
   source.once('close', () => {
-    if (!prefixStream.writableEnded) {
+    if (!prefixStream.writableEnded && !prefixStream.destroyed) {
       prefixStream.end();
     }
   });
+  // Resolve on `close`, which comes after the last chunk was written. Also
+  // resolve on `error`, so that a broken stream cannot hang the caller.
   return new Promise((resolve) => {
-    prefixStream.once('close', () => {
+    const done = () => {
       resolve();
-    });
+    };
+    prefixStream.once('close', done);
+    prefixStream.once('error', done);
   });
 }
 
