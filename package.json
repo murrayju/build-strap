@@ -57,7 +57,7 @@
     "@types/node": "^26.6.6",
     "@types/semver": "^7.8.0",
     "eslint-plugin-perfectionist": "^5.13.0",
-    "oxfmt": "^0.77.0",
+    "oxfmt": "^0.78.0",
     "oxlint": "^1.92.0",
     "oxlint-tsgolint": "^7.0.2006",
     "typescript": "^7.0.2"
