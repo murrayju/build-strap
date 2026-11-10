@@ -23,11 +23,6 @@
       "onFail": "ignore"
     }
   },
-  "pnpm": {
-    "overrides": {
-      "minimatch": "^11.0.5"
-    }
-  },
   "buildStrap": {
     "repoType": "git",
     "copyright": "Justin Murray",
