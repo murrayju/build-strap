@@ -95,21 +95,44 @@ export const writeIfMissing = async (
   return false;
 };
 
+const withTrailingNewline = (text: string): string =>
+  text.endsWith('\n') ? text : `${text}\n`;
+
+/**
+ * Append the content to the file, if the file does not contain it. Create the
+ * file if it does not exist. The appended content starts on a new line and ends
+ * with a newline, so that a line that a different tool appends later does not
+ * join it.
+ */
 export const appendIfMissing = async (
   dest: string,
   content: string | StringGenFn,
   testContent?: string | StringGenFn,
 ) => {
-  if (!(await writeIfMissing(dest, content))) {
+  const getContent = resolveOnce(() => resolveStringGen(content));
+  if (
+    !(await writeIfMissing(dest, async () =>
+      withTrailingNewline(await getContent()),
+    ))
+  ) {
     const existingContent = await fs.readFile(dest, 'utf8');
-    const getContent = resolveOnce(() => resolveStringGen(content));
+    // Find the content without the trailing newline. Earlier versions appended
+    // it with no newline at the end of the file.
     if (
       !existingContent.includes(
         await (testContent ? resolveStringGen(testContent) : getContent()),
       )
     ) {
       buildLog(`${dest} not yet updated, appending...`);
-      await fs.appendFile(dest, await getContent());
+      const newContent = await getContent();
+      const startsNewLine =
+        existingContent === '' ||
+        existingContent.endsWith('\n') ||
+        newContent.startsWith('\n');
+      await fs.appendFile(
+        dest,
+        `${startsNewLine ? '' : '\n'}${withTrailingNewline(newContent)}`,
+      );
     }
   }
 };
