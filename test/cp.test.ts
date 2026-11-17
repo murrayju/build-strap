@@ -524,3 +524,111 @@ void describe('spawn outputPrefix', () => {
     ]);
   });
 });
+
+void describe('spawn stdio', () => {
+  /**
+   * Run a script that spawns a child, then print what the script reports.
+   *
+   * The child process keeps a hung spawn away from the test runner, so that a
+   * regression fails this test instead of blocking the whole run.
+   */
+  async function runSpawnScript(source: string): Promise<string> {
+    const { stdout } = await execFileAsync(
+      process.execPath,
+      ['--input-type=module', '-e', source],
+      { timeout: CHILD_TIMEOUT_MS },
+    );
+    return stdout;
+  }
+
+  /** A child that writes `size` bytes to stdout and stderr. */
+  function chattyChildScript(): string {
+    const size = 1024 * 1024;
+    return `
+      process.stdout.write('x'.repeat(${size}));
+      process.stderr.write('y'.repeat(${size}));
+    `;
+  }
+
+  void it('settles when the child writes more output than a pipe holds', async () => {
+    // A pipe that nobody reads fills up and blocks the child forever. The
+    // default has no reader, so the child must not get a pipe.
+    const stdout = await runSpawnScript(`
+      import { spawn } from ${JSON.stringify(spawnModuleUrl)};
+      await spawn(process.execPath, [
+        '-e',
+        ${JSON.stringify(chattyChildScript())},
+      ]);
+      process.stdout.write('settled');
+    `);
+
+    assert.equal(stdout, 'settled');
+  });
+
+  void it('settles when a captured command reads stdin to the end', async () => {
+    // An open stdin pipe never ends, so a command that reads stdin would wait
+    // forever. The default stdin is empty instead.
+    const stdout = await runSpawnScript(`
+      import { spawn } from ${JSON.stringify(spawnModuleUrl)};
+      const result = await spawn(
+        process.execPath,
+        ['-e', ${JSON.stringify(`
+          let data = '';
+          process.stdin.on('data', (chunk) => {
+            data += chunk;
+          });
+          process.stdin.on('end', () => process.stdout.write('read:' + data));
+          process.stdin.resume();
+        `)}],
+        { captureOutput: true },
+      );
+      process.stdout.write('settled ' + result.stdout);
+    `);
+
+    assert.equal(stdout, 'settled read:');
+  });
+
+  void it('captures stdout when the child writes a lot to stderr', async () => {
+    // Capturing must read both streams, so that a chatty stderr cannot block
+    // the child.
+    const stderrSize = 1024 * 1024;
+    const stdout = await runSpawnScript(`
+      import { spawn } from ${JSON.stringify(spawnModuleUrl)};
+      const result = await spawn(
+        process.execPath,
+        ['-e', ${JSON.stringify(`
+          process.stderr.write('e'.repeat(${stderrSize}));
+          process.stdout.write('kept');
+        `)}],
+        { captureOutput: true },
+      );
+      process.stdout.write(
+        JSON.stringify({
+          stderrLength: result.stderr.length,
+          stdout: result.stdout,
+        }),
+      );
+    `);
+
+    assert.deepEqual(JSON.parse(stdout), {
+      stderrLength: stderrSize,
+      stdout: 'kept',
+    });
+  });
+
+  void it('settles when the caller sets stdio together with captureOutput', async () => {
+    // The caller can remove a stream that this module captures. That is a
+    // warning, not a crash or a hang.
+    const stdout = await runSpawnScript(`
+      import { spawn } from ${JSON.stringify(spawnModuleUrl)};
+      const result = await spawn(
+        process.execPath,
+        ['-e', "process.stdout.write('x')"],
+        { captureOutput: true, stdio: 'ignore' },
+      );
+      process.stdout.write('settled ' + JSON.stringify(result.output));
+    `);
+
+    assert.equal(stdout, 'settled ""');
+  });
+});

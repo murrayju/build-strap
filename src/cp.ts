@@ -21,6 +21,17 @@ export interface SpawnOptions extends cp.SpawnOptions {
   outputPrefix?: string;
   pipeOutput?: boolean;
   rejectOnErrorCode?: boolean;
+  /**
+   * How the child gets stdin, stdout and stderr. Do not set this together with
+   * `captureOutput` or `pipeOutput`: this module picks the value that it can
+   * read from, and a caller value that removes a stream it captures is
+   * reported as a warning.
+   *
+   * Without `captureOutput` and `pipeOutput`, the child gets `'ignore'`. A pipe
+   * that nobody reads fills up and blocks the child forever, and an open stdin
+   * pipe makes a command that reads stdin wait forever.
+   */
+  stdio?: cp.StdioOptions;
 }
 
 /**
@@ -218,15 +229,25 @@ export async function spawn(
       // capture it or to add a prefix to each line. With `outputPrefix`, stdin
       // stays inherited, so that a command can still read input and does not
       // wait for a pipe that is never closed.
+      //
+      // This module reads a pipe only in those two modes, so it must not create
+      // one otherwise: a pipe that nobody reads fills up and blocks the child
+      // forever. The default is `'ignore'`, which also gives the child an empty
+      // stdin, so a command that reads stdin cannot wait forever either.
       const canInherit = pipeOutput && !captureOutput && !outputPrefix;
       const prefixOutput = pipeOutput && !!outputPrefix;
+      const stdio: cp.StdioOptions = canInherit
+        ? 'inherit'
+        : prefixOutput
+          ? ['inherit', 'pipe', 'pipe']
+          : captureOutput
+            ? ['ignore', 'pipe', 'pipe']
+            : 'ignore';
       const p = crossSpawn(command, args, {
-        ...(canInherit
-          ? { stdio: 'inherit' }
-          : prefixOutput
-            ? { stdio: ['inherit', 'pipe', 'pipe'] }
-            : {}),
         ...options,
+        // A caller value wins, but an explicit `undefined` must not remove the
+        // pipe choice that this module can read.
+        stdio: options.stdio ?? stdio,
       });
 
       let output = '';
