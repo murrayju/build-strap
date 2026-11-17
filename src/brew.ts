@@ -70,7 +70,12 @@ export const brew = async (args: string[], options?: SpawnOptions) =>
 
 export const brewBundleCheck = async (brewFile: string): Promise<boolean> => {
   try {
-    await brew(['bundle', 'check', '--file', brewFile]);
+    // Inherit the output, so that the user sees the progress of a long step. A
+    // check that must upgrade Homebrew's own Ruby first downloads a bottle and
+    // prints a progress bar, and that output must not be lost or buffered.
+    await brew(['bundle', 'check', '--file', brewFile], {
+      stdio: ['ignore', 'inherit', 'inherit'],
+    });
     return true;
   } catch {
     return false;
