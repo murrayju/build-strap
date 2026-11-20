@@ -47,7 +47,7 @@ importers:
     devDependencies:
       '@tsconfig/node26':
         specifier: ^26.0.1
-        version: 26.0.1
+        version: 26.0.2
       '@types/bytes':
         specifier: ^3.1.4
         version: 3.1.6
@@ -368,8 +368,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@tsconfig/node26@26.0.1':
-    resolution: {integrity: sha512-NQT8JUFDKeAIWpR1dakeF534msQAsoSLr1WpKdRDt3sCvk2fsFK3EVKUBG5xKYVamiRO6yTfniiyvCaqOGgn/g==}
+  '@tsconfig/node26@26.0.2':
+    resolution: {integrity: sha512-RIBSoNGQxUQ8r4hSrEzS6TrUneoKaCuX6BjL4zF3wqttGq2w06zCea4d8P1gRvM/HZyDT1FQJ8trZSyy/63oMg==}
 
   '@types/bytes@3.1.6':
     resolution: {integrity: sha512-mZP7MVbCf8q2nBMwll27TyVnObEo9lNuXtQ+XU5EBGiFxtm9qfWm0YL4KTMQBwcVlOZB+th51gFIDYFFBiK7IQ==}
@@ -925,7 +925,7 @@ snapshots:
   '@oxlint/binding-win32-x64-msvc@1.93.0':
     optional: true
 
-  '@tsconfig/node26@26.0.1': {}
+  '@tsconfig/node26@26.0.2': {}
 
   '@types/bytes@3.1.6': {}
 
