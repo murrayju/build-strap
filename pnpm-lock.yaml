@@ -50,7 +50,7 @@ importers:
         version: 26.0.1
       '@types/bytes':
         specifier: ^3.1.4
-        version: 3.1.6
+        version: 3.1.7
       '@types/cross-spawn':
         specifier: ^6.0.6
         version: 6.0.6
@@ -371,8 +371,8 @@ packages:
   '@tsconfig/node26@26.0.1':
     resolution: {integrity: sha512-NQT8JUFDKeAIWpR1dakeF534msQAsoSLr1WpKdRDt3sCvk2fsFK3EVKUBG5xKYVamiRO6yTfniiyvCaqOGgn/g==}
 
-  '@types/bytes@3.1.6':
-    resolution: {integrity: sha512-mZP7MVbCf8q2nBMwll27TyVnObEo9lNuXtQ+XU5EBGiFxtm9qfWm0YL4KTMQBwcVlOZB+th51gFIDYFFBiK7IQ==}
+  '@types/bytes@3.1.7':
+    resolution: {integrity: sha512-r8MhI3qNTjcnHvIG20+z+qMZnqGsHTMxfJUssNidIiecInEyGE3DZ90V0SKZwGSMSMCbNd+i3w+J+tCCIBpZug==}
 
   '@types/cross-spawn@6.0.6':
     resolution: {integrity: sha512-fXRhhUkG4H3TQk5dBhQ7m/JDdSNHKwR2BBia62lhwEIq9xGiQKLxd6LymNhn47SjXhsUEPmxi+PKw2OkW4LLjA==}
@@ -927,7 +927,7 @@ snapshots:
 
   '@tsconfig/node26@26.0.1': {}
 
-  '@types/bytes@3.1.6': {}
+  '@types/bytes@3.1.7': {}
 
   '@types/cross-spawn@6.0.6':
     dependencies:
